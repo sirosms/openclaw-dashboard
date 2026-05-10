@@ -172,17 +172,6 @@ tbody tr:hover { background: #3a1f12; }
 </div>
 
 <script>
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//  MSA — Frontend (GitHub Pages) ↔ Backend API (별도 호스트)
-//  ?api=URL 쿼리로 백엔드 URL 설정 (예: ?api=https://tunnel.example.com)
-//  설정값은 localStorage에 저장 → 다음 방문 시 자동 사용
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const params = new URLSearchParams(location.search);
-const apiFromQuery = params.get('api');
-if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
-const API_BASE = localStorage.getItem('OPENCLAW_API') || 'http://localhost:3000';
-console.log('API_BASE:', API_BASE);
-
 const fmt = {
   usd: (n) => '$' + (n||0).toFixed(2),
   pct: (n) => (n>=0?'+':'') + (n||0).toFixed(2) + '%',
@@ -197,17 +186,33 @@ async function refresh() {
     if (!r.ok) throw new Error(r.error);
     const { binance, upbit, bots, summary } = r;
 
-    // 요약
-    document.getElementById('bnBalance').textContent = fmt.usd(binance.balance.total);
-    document.getElementById('bnAvail').textContent = '사용 가능: ' + fmt.usd(binance.balance.available);
-    const bnPnl = document.getElementById('bnPnl');
-    bnPnl.textContent = fmt.usd(summary.bnPnl);
-    bnPnl.className = 'card-value ' + cls(summary.bnPnl);
-    document.getElementById('bnPosCount').textContent = '포지션: ' + binance.positions.length + '개';
-    const upPnl = document.getElementById('upPnl');
-    upPnl.textContent = fmt.krw(summary.upPnlKRW);
-    upPnl.className = 'card-value ' + cls(summary.upPnlKRW);
-    document.getElementById('upPosCount').textContent = '보유: ' + upbit.holdings.length + '개';
+    // 통합 자산 요약
+    const grandTotal = summary.grandTotalKRW || 0;
+    document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
+    document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / (r.exchange?.USD_KRW || 1476));
+
+    // 투자 대비 수익률
+    const returnPctEl = document.getElementById('returnPct');
+    const profitKRWEl = document.getElementById('profitKRW');
+    if (summary.investKRW > 0) {
+      returnPctEl.textContent = fmt.pct(summary.returnPct);
+      returnPctEl.className = 'card-value ' + cls(summary.returnPct);
+      profitKRWEl.textContent = (summary.totalProfitKRW>=0?'+':'') + fmt.krw(summary.totalProfitKRW) + ' (투자 ' + fmt.krw(summary.investKRW) + ')';
+    } else {
+      returnPctEl.textContent = '-';
+      returnPctEl.className = 'card-value gray';
+      profitKRWEl.textContent = 'INVEST_KRW 미설정 (.env)';
+    }
+
+    // 바이낸스 합계 (Futures + Spot)
+    document.getElementById('bnTotal').textContent = fmt.krw(binance.totalKRW || 0);
+    document.getElementById('bnSplit').textContent = `선물 ${fmt.krw(binance.futuresKRW||0)} / 현물 ${fmt.krw(binance.spotKRW||0)}`;
+
+    // 업비트 합계
+    document.getElementById('upTotal').textContent = fmt.krw(upbit.totalKRW || 0);
+    document.getElementById('upSplit').textContent = `KRW ${fmt.krw(upbit.krwBalance||0)} / 코인 ${fmt.krw(upbit.coinValue||0)}`;
+
+    // 미실현 PnL (USD 기준)
     const totalPnl = document.getElementById('totalPnl');
     totalPnl.textContent = fmt.usd(summary.netPnlUSD);
     totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
