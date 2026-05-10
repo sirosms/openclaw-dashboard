@@ -445,9 +445,18 @@ const fmt = {
 };
 const cls = (n) => n>0 ? 'green' : n<0 ? 'red' : 'gray';
 
+// LocalTunnel 인증 페이지 우회 + Cloudflare 등 헤더
+const fetchOpts = (extra) => ({
+  headers: {
+    'bypass-tunnel-reminder': 'true',
+    'Content-Type': 'application/json',
+    ...(extra || {})
+  }
+});
+
 async function refresh() {
   try {
-    const r = await fetch(API_BASE + '/api/status').then(r=>r.json());
+    const r = await fetch(API_BASE + '/api/status', fetchOpts()).then(r=>r.json());
     if (!r.ok) throw new Error(r.error);
     const { binance, upbit, bots, summary } = r;
 
@@ -549,7 +558,7 @@ if (SR) {
     try {
       const r = await fetch(API_BASE + '/api/voice', {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        headers: {'Content-Type':'application/json', 'bypass-tunnel-reminder':'true'},
         body: JSON.stringify({ text: transcript })
       }).then(r=>r.json());
       addVoiceLog('🤖 ' + r.action.say, 'bot');
