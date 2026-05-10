@@ -2,125 +2,299 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🤖 OpenClaw Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a0f0a">
+<title>🤖 OpenClaw</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, 'SF Pro', 'Pretendard', sans-serif;
-  background: #1a0f0a; color: #fef3e8;
-  padding: 16px; min-height: 100vh;
-  background-image: radial-gradient(circle at top right, #2d1810 0%, #1a0f0a 50%);
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg-0: #15080a;
+  --bg-1: #1f0e10;
+  --bg-2: #2a1410;
+  --bg-glass: rgba(42, 20, 16, 0.6);
+  --orange: #ff6b35;
+  --orange-2: #ff8c42;
+  --gold: #ffb74d;
+  --pink: #ff4d6d;
+  --green: #4ade80;
+  --red: #ff5d5d;
+  --text: #fef3e8;
+  --text-dim: #c19878;
+  --border: rgba(255, 140, 66, 0.18);
+  --border-strong: rgba(255, 107, 53, 0.4);
 }
-.container { max-width: 1280px; margin: 0 auto; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  padding: max(env(safe-area-inset-top), 12px) 12px max(env(safe-area-inset-bottom), 12px);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at 0% 0%, rgba(255, 107, 53, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 0%, rgba(255, 77, 109, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(255, 183, 77, 0.08) 0%, transparent 60%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+.container { max-width: 1400px; margin: 0 auto; }
+
+/* ━━━ Header ━━━ */
 header {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 16px; padding: 12px 18px;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+  margin-bottom: 16px; padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.95) 0%, rgba(255, 77, 109, 0.85) 100%);
+  border-radius: 18px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 8px 32px rgba(255, 107, 53, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: sticky; top: max(env(safe-area-inset-top), 8px); z-index: 100;
 }
-h1 { font-size: 22px; font-weight: 700; color: #fff; }
-.refresh-btn, .voice-btn {
-  background: #ff6b35; color: white; border: none; padding: 10px 18px;
-  border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
-  margin-left: 8px; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+header h1 {
+  font-size: clamp(18px, 4vw, 22px);
+  font-weight: 800; color: #fff;
+  letter-spacing: -0.5px;
+  display: flex; align-items: center; gap: 6px;
 }
-.voice-btn { background: #d63864; }
-.voice-btn.active { background: #ff4500; animation: pulse 1.5s infinite; }
-@keyframes pulse { 0%,100%{opacity:1; box-shadow: 0 0 20px #ff4500} 50%{opacity:.6; box-shadow: 0 0 8px #ff4500} }
-.refresh-btn:hover, .voice-btn:hover { opacity: .85; transform: translateY(-1px); }
+header h1::before { content: '🤖'; font-size: 24px; }
+.header-actions { display: flex; gap: 8px; }
+.btn {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff; border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 10px 16px; border-radius: 12px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  font-family: inherit;
+  min-height: 44px;  /* iOS 가이드라인 */
+  display: inline-flex; align-items: center; gap: 6px;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+.btn:hover { background: rgba(255, 255, 255, 0.28); transform: translateY(-1px); }
+.btn:active { transform: scale(0.96); }
+.btn.voice.active {
+  background: #ff4500;
+  animation: pulse 1.5s ease-in-out infinite;
+  border-color: #fff;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0.7); }
+  50% { box-shadow: 0 0 0 14px rgba(255, 69, 0, 0); }
+}
 
+/* ━━━ Summary Cards (Glass Effect) ━━━ */
 .summary {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
   margin-bottom: 16px;
 }
 .card {
-  background: #2a1810; border: 1px solid #4a2c1f;
-  border-radius: 10px; padding: 14px;
-  border-top: 3px solid #ff6b35;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
-.card-label { font-size: 11px; color: #c19878; text-transform: uppercase; letter-spacing: 0.5px; }
-.card-value { font-size: 22px; font-weight: 700; margin-top: 4px; color: #fef3e8; }
-.green { color: #5dd388; } .red { color: #ff6b6b; } .gray { color: #c19878; }
-.orange { color: #ff8c42; } .gold { color: #ffb74d; }
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--orange), var(--orange-2));
+}
+.card.hero {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(255, 77, 109, 0.1));
+  border: 1px solid rgba(255, 107, 53, 0.35);
+  grid-column: span 1;
+}
+.card.hero::before {
+  height: 3px;
+  background: linear-gradient(90deg, var(--orange), var(--gold));
+}
+.card-label {
+  font-size: 10px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+}
+.card-value {
+  font-size: 22px; font-weight: 800;
+  margin-top: 6px; color: var(--text);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: -0.5px;
+}
+.card.hero .card-value { font-size: 26px; }
+.timestamp {
+  font-size: 11px; color: var(--text-dim); margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
 
+.green { color: var(--green); } .red { color: var(--red); } .gray { color: var(--text-dim); }
+.orange { color: var(--orange-2); } .gold { color: var(--gold); }
+
+/* ━━━ Sections ━━━ */
 .section {
-  background: #2a1810; border-radius: 10px;
-  padding: 16px; margin-bottom: 16px; border: 1px solid #4a2c1f;
-  border-left: 4px solid #ff6b35;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
 .section h2 {
-  font-size: 16px; margin-bottom: 12px; padding-bottom: 8px;
-  border-bottom: 1px solid #4a2c1f; color: #ffb74d;
+  font-size: 15px; font-weight: 700;
+  margin-bottom: 14px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--gold);
+  display: flex; align-items: center; gap: 6px;
 }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-thead { background: #3a1f12; }
-th, td { padding: 10px 8px; text-align: left; }
-th { font-weight: 600; color: #ff8c42; text-transform: uppercase; font-size: 11px; }
-tbody tr { border-top: 1px solid #4a2c1f; }
-tbody tr:hover { background: #3a1f12; }
-.long { color: #5dd388; font-weight: 600; }
-.short { color: #ff6b6b; font-weight: 600; }
 
+/* ━━━ Tables ━━━ */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 720px; }
+thead { background: rgba(255, 107, 53, 0.08); }
+th, td { padding: 10px 8px; text-align: left; white-space: nowrap; }
+th {
+  font-weight: 600; color: var(--orange-2);
+  text-transform: uppercase; font-size: 10px;
+  letter-spacing: 0.8px; padding: 12px 8px;
+}
+tbody tr {
+  border-top: 1px solid rgba(255, 140, 66, 0.08);
+  transition: background 0.15s;
+}
+tbody tr:hover { background: rgba(255, 107, 53, 0.05); }
+.long { color: var(--green); font-weight: 700; }
+.short { color: var(--red); font-weight: 700; }
+td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.symbol-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  background: rgba(255, 107, 53, 0.15);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* ━━━ Bots ━━━ */
 .bot-list {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 8px;
 }
 .bot {
-  padding: 8px 12px; background: #3a1f12; border-radius: 6px;
-  font-size: 12px; border-left: 3px solid #ff8c42;
+  padding: 10px 14px;
+  background: rgba(255, 107, 53, 0.06);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  border-radius: 10px;
+  font-size: 12px;
+  border-left: 3px solid var(--orange-2);
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.2s;
 }
-.bot .pid { color: #c19878; font-size: 11px; }
+.bot:hover { background: rgba(255, 107, 53, 0.12); transform: translateY(-1px); }
+.bot .pid { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
 
+/* ━━━ Voice ━━━ */
 #voiceLog {
-  margin-top: 12px; padding: 10px;
-  background: #1a0f0a; border-radius: 6px;
-  font-size: 13px; min-height: 40px;
-  border: 1px solid #4a2c1f;
+  margin-top: 12px; padding: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  font-size: 13px;
+  min-height: 50px;
+  border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  max-height: 200px;
+  overflow-y: auto;
 }
 .voice-msg { padding: 4px 0; }
-.voice-msg .you { color: #ff8c42; font-weight: 600; }
-.voice-msg .bot { color: #5dd388; }
+.voice-msg .you { color: var(--orange-2); font-weight: 700; }
+.voice-msg .bot { color: var(--green); }
+.voice-hint {
+  font-size: 12px; color: var(--text-dim); margin-bottom: 8px;
+  background: rgba(255, 183, 77, 0.06);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-left: 2px solid var(--gold);
+}
 
-.timestamp { font-size: 11px; color: #c19878; margin-top: 6px; }
-
+/* ━━━ 반응형 ━━━ */
+@media (max-width: 1024px) {
+  .summary { grid-template-columns: repeat(3, 1fr) !important; }
+}
 @media (max-width: 768px) {
-  .summary { grid-template-columns: repeat(2, 1fr); }
-  table { font-size: 11px; }
-  th, td { padding: 6px 4px; }
+  body { padding: max(env(safe-area-inset-top), 8px) 10px max(env(safe-area-inset-bottom), 10px); }
+  header { padding: 12px 14px; border-radius: 14px; }
+  header h1 { font-size: 17px; }
+  .btn { padding: 8px 12px; font-size: 12px; min-height: 42px; }
+  .summary { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  .card { padding: 14px; border-radius: 14px; }
+  .card-value { font-size: 18px !important; }
+  .card.hero { grid-column: span 2; }
+  .card.hero .card-value { font-size: 22px !important; }
+  .section { padding: 14px; border-radius: 14px; }
+  .section h2 { font-size: 14px; }
+  table { font-size: 12px; }
+  th, td { padding: 8px 6px; }
+  .bot-list { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}
+@media (max-width: 480px) {
+  .summary { grid-template-columns: 1fr !important; }
+  .card.hero { grid-column: 1; }
+  header h1::before { display: none; }
 }
 </style>
 </head>
 <body>
 <div class="container">
+
 <header>
-  <h1>🤖 OpenClaw Dashboard</h1>
-  <div>
-    <button class="voice-btn" id="voiceBtn">🎤 음성 명령</button>
-    <button class="refresh-btn" id="refreshBtn">🔄 새로고침</button>
+  <h1>OpenClaw</h1>
+  <div class="header-actions">
+    <button class="btn voice" id="voiceBtn">🎤</button>
+    <button class="btn" id="refreshBtn">🔄</button>
   </div>
 </header>
 
 <!-- 통합 자산 요약 -->
-<div class="summary" style="grid-template-columns: repeat(5, 1fr)">
-  <div class="card" style="background:linear-gradient(135deg,#1e3a5f,#2d4a7c)">
-    <div class="card-label">💰 총 자산 (KRW)</div>
-    <div class="card-value" id="grandTotal" style="font-size:24px">-</div>
+<div class="summary">
+  <div class="card hero">
+    <div class="card-label">💰 총 자산</div>
+    <div class="card-value" id="grandTotal">-</div>
     <div class="timestamp" id="grandTotalUSD">-</div>
   </div>
   <div class="card">
-    <div class="card-label">투자 대비 수익률</div>
+    <div class="card-label">📈 수익률</div>
     <div class="card-value" id="returnPct">-</div>
     <div class="timestamp" id="profitKRW">-</div>
   </div>
   <div class="card">
-    <div class="card-label">바이낸스 (Futures+Spot)</div>
+    <div class="card-label">바이낸스</div>
     <div class="card-value" id="bnTotal">-</div>
     <div class="timestamp" id="bnSplit">-</div>
   </div>
   <div class="card">
-    <div class="card-label">업비트 (KRW+코인)</div>
+    <div class="card-label">업비트</div>
     <div class="card-value" id="upTotal">-</div>
     <div class="timestamp" id="upSplit">-</div>
   </div>
@@ -134,25 +308,29 @@ tbody tr:hover { background: #3a1f12; }
 <!-- 바이낸스 -->
 <div class="section">
   <h2>📊 바이낸스 Futures</h2>
-  <table>
-    <thead><tr>
-      <th>심볼</th><th>방향</th><th>레버</th><th>진입가</th><th>현재가</th>
-      <th>수량</th><th>명목</th><th>PnL%</th><th>PnL($)</th>
-    </tr></thead>
-    <tbody id="bnTable"><tr><td colspan="9" style="text-align:center;color:#8a9ab0">로딩...</td></tr></tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>심볼</th><th>방향</th><th>레버</th><th>진입가</th><th>현재가</th>
+        <th>수량</th><th>명목</th><th>PnL%</th><th>PnL($)</th>
+      </tr></thead>
+      <tbody id="bnTable"><tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- 업비트 -->
 <div class="section">
   <h2>📊 업비트</h2>
-  <table>
-    <thead><tr>
-      <th>코인</th><th>보유</th><th>평균매입</th><th>현재가</th>
-      <th>투자금</th><th>평가금</th><th>PnL%</th><th>PnL(₩)</th>
-    </tr></thead>
-    <tbody id="upTable"><tr><td colspan="8" style="text-align:center;color:#8a9ab0">로딩...</td></tr></tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>코인</th><th>보유</th><th>평균매입</th><th>현재가</th>
+        <th>투자금</th><th>평가금</th><th>PnL%</th><th>PnL(₩)</th>
+      </tr></thead>
+      <tbody id="upTable"><tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- 봇 -->
@@ -164,16 +342,24 @@ tbody tr:hover { background: #3a1f12; }
 <!-- 음성 로그 -->
 <div class="section">
   <h2>🎤 음성 명령</h2>
-  <div style="font-size:12px;color:#8a9ab0;margin-bottom:8px">
-    예시: "포지션 보여줘", "잔고", "수익률", "봇 상태"
+  <div class="voice-hint">
+    예: "포지션 보여줘" / "잔고" / "수익률" / "봇 상태"
   </div>
-  <div id="voiceLog">버튼을 눌러 음성 명령을 시작하세요.</div>
+  <div id="voiceLog">🎤 버튼을 눌러 음성 명령을 시작하세요.</div>
 </div>
+
 </div>
 
 <script>
+// MSA — Frontend (GitHub Pages) ↔ Backend API
+const params = new URLSearchParams(location.search);
+const apiFromQuery = params.get('api');
+if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
+const API_BASE = localStorage.getItem('OPENCLAW_API') || 'http://localhost:3000';
+console.log('API_BASE:', API_BASE);
+
 const fmt = {
-  usd: (n) => '$' + (n||0).toFixed(2),
+  usd: (n) => '$' + (n||0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}),
   pct: (n) => (n>=0?'+':'') + (n||0).toFixed(2) + '%',
   krw: (n) => '₩' + Math.round(n||0).toLocaleString(),
   qty: (n) => Number(n||0).toLocaleString(undefined, {maximumFractionDigits: 4}),
@@ -186,85 +372,84 @@ async function refresh() {
     if (!r.ok) throw new Error(r.error);
     const { binance, upbit, bots, summary } = r;
 
-    // 통합 자산 요약
+    // 총 자산
     const grandTotal = summary.grandTotalKRW || 0;
     document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
     document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / (r.exchange?.USD_KRW || 1476));
 
-    // 투자 대비 수익률
+    // 수익률
     const returnPctEl = document.getElementById('returnPct');
     const profitKRWEl = document.getElementById('profitKRW');
     if (summary.investKRW > 0) {
       returnPctEl.textContent = fmt.pct(summary.returnPct);
       returnPctEl.className = 'card-value ' + cls(summary.returnPct);
-      profitKRWEl.textContent = (summary.totalProfitKRW>=0?'+':'') + fmt.krw(summary.totalProfitKRW) + ' (투자 ' + fmt.krw(summary.investKRW) + ')';
+      profitKRWEl.textContent = (summary.totalProfitKRW>=0?'+':'') + fmt.krw(summary.totalProfitKRW);
     } else {
       returnPctEl.textContent = '-';
       returnPctEl.className = 'card-value gray';
-      profitKRWEl.textContent = 'INVEST_KRW 미설정 (.env)';
+      profitKRWEl.textContent = '.env INVEST_KRW 미설정';
     }
 
-    // 바이낸스 합계 (Futures + Spot)
+    // 바이낸스
     document.getElementById('bnTotal').textContent = fmt.krw(binance.totalKRW || 0);
-    document.getElementById('bnSplit').textContent = `선물 ${fmt.krw(binance.futuresKRW||0)} / 현물 ${fmt.krw(binance.spotKRW||0)}`;
+    document.getElementById('bnSplit').textContent = `선물 ${fmt.krw(binance.futuresKRW||0)}/현물 ${fmt.krw(binance.spotKRW||0)}`;
 
-    // 업비트 합계
+    // 업비트
     document.getElementById('upTotal').textContent = fmt.krw(upbit.totalKRW || 0);
-    document.getElementById('upSplit').textContent = `KRW ${fmt.krw(upbit.krwBalance||0)} / 코인 ${fmt.krw(upbit.coinValue||0)}`;
+    document.getElementById('upSplit').textContent = `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}`;
 
-    // 미실현 PnL (USD 기준)
+    // PnL
     const totalPnl = document.getElementById('totalPnl');
     totalPnl.textContent = fmt.usd(summary.netPnlUSD);
     totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
-    document.getElementById('updateTs').textContent = new Date().toLocaleTimeString('ko-KR');
+    document.getElementById('updateTs').textContent = '⏱ ' + new Date().toLocaleTimeString('ko-KR');
 
     // 바이낸스 테이블
     document.getElementById('bnTable').innerHTML = binance.positions.map(p => `
       <tr>
-        <td><strong>${p.symbol.replace('USDT','')}</strong></td>
+        <td><span class="symbol-tag">${p.symbol.replace('USDT','')}</span></td>
         <td class="${p.side==='LONG'?'long':'short'}">${p.side}</td>
-        <td>${p.leverage}x</td>
-        <td>$${p.entry.toFixed(p.entry<1?6:3)}</td>
-        <td>$${p.mark.toFixed(p.mark<1?6:3)}</td>
-        <td>${fmt.qty(p.qty)}</td>
-        <td>$${p.notional.toFixed(0)}</td>
-        <td class="${cls(p.pnlPct)}">${fmt.pct(p.pnlPct)}</td>
-        <td class="${cls(p.pnl)}">${fmt.usd(p.pnl)}</td>
-      </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:#8a9ab0">활성 포지션 없음</td></tr>';
+        <td class="mono">${p.leverage}x</td>
+        <td class="mono">$${p.entry.toFixed(p.entry<1?6:3)}</td>
+        <td class="mono">$${p.mark.toFixed(p.mark<1?6:3)}</td>
+        <td class="mono">${fmt.qty(p.qty)}</td>
+        <td class="mono">$${p.notional.toFixed(0)}</td>
+        <td class="mono ${cls(p.pnlPct)}">${fmt.pct(p.pnlPct)}</td>
+        <td class="mono ${cls(p.pnl)}">${fmt.usd(p.pnl)}</td>
+      </tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
 
     // 업비트 테이블
     document.getElementById('upTable').innerHTML = upbit.holdings.map(h => `
       <tr>
-        <td><strong>${h.currency}</strong></td>
-        <td>${fmt.qty(h.balance)}</td>
-        <td>${fmt.krw(h.avgPrice)}</td>
-        <td>${fmt.krw(h.currentPrice)}</td>
-        <td>${fmt.krw(h.invest)}</td>
-        <td>${fmt.krw(h.value)}</td>
-        <td class="${cls(h.pnlPct)}">${fmt.pct(h.pnlPct)}</td>
-        <td class="${cls(h.pnlKRW)}">${fmt.krw(h.pnlKRW)}</td>
-      </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:#8a9ab0">보유 없음 또는 IP 인증 오류</td></tr>';
+        <td><span class="symbol-tag">${h.currency}</span></td>
+        <td class="mono">${fmt.qty(h.balance)}</td>
+        <td class="mono">${fmt.krw(h.avgPrice)}</td>
+        <td class="mono">${fmt.krw(h.currentPrice)}</td>
+        <td class="mono">${fmt.krw(h.invest)}</td>
+        <td class="mono">${fmt.krw(h.value)}</td>
+        <td class="mono ${cls(h.pnlPct)}">${fmt.pct(h.pnlPct)}</td>
+        <td class="mono ${cls(h.pnlKRW)}">${fmt.krw(h.pnlKRW)}</td>
+      </tr>`).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:24px">보유 없음</td></tr>`;
 
     // 봇
     document.getElementById('botList').innerHTML = bots.map(b => `
       <div class="bot">
-        <div>${b.file}</div>
+        <div>${b.file.replace('src/openclaw/','').replace('src/upbit/','').replace('src/dashboard/','').replace('.ts','')}</div>
         <div class="pid">PID ${b.pid}</div>
-      </div>`).join('') || '<div class="bot" style="border-left-color:#f87171">가동 봇 없음</div>';
+      </div>`).join('') || '<div class="bot" style="border-left-color:var(--red)">가동 봇 없음</div>';
   } catch (e) {
     console.error('refresh error:', e);
-    document.getElementById('updateTs').textContent = '오류: ' + e.message;
+    document.getElementById('updateTs').textContent = '❌ ' + e.message;
   }
 }
 
 document.getElementById('refreshBtn').onclick = refresh;
 refresh();
-setInterval(refresh, 5000);  // 5초마다
+setInterval(refresh, 5000);
 
 // 음성 인식
 const voiceBtn = document.getElementById('voiceBtn');
 const voiceLog = document.getElementById('voiceLog');
-
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 
@@ -276,37 +461,43 @@ if (SR) {
 
   recognition.onresult = async (e) => {
     const transcript = e.results[0][0].transcript;
-    addVoiceLog('🎤 " ' + transcript + ' "', 'you');
+    addVoiceLog('🎤 ' + transcript, 'you');
     try {
-      const r = await fetch(API_BASE + '/api/voice', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text: transcript }) }).then(r=>r.json());
-      addVoiceLog('🤖 ' + r.action.say + ` (intent: ${r.intent})`, 'bot');
-      // intent에 따라 동작
+      const r = await fetch(API_BASE + '/api/voice', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ text: transcript })
+      }).then(r=>r.json());
+      addVoiceLog('🤖 ' + r.action.say, 'bot');
       if (['show_positions','show_balance','show_pnl','show_bots'].includes(r.intent)) refresh();
-      // TTS
       if (window.speechSynthesis) {
         const u = new SpeechSynthesisUtterance(r.action.say);
         u.lang = 'ko-KR';
         speechSynthesis.speak(u);
       }
     } catch (err) {
-      addVoiceLog('🤖 오류: ' + err.message, 'bot');
+      addVoiceLog('❌ ' + err.message, 'bot');
     }
   };
-  recognition.onend = () => voiceBtn.classList.remove('active');
+  recognition.onend = () => {
+    voiceBtn.classList.remove('active');
+    voiceBtn.textContent = '🎤';
+  };
   recognition.onerror = (e) => {
     voiceBtn.classList.remove('active');
-    addVoiceLog('🤖 인식 오류: ' + e.error, 'bot');
+    voiceBtn.textContent = '🎤';
+    addVoiceLog('❌ 인식 오류: ' + e.error, 'bot');
   };
 
   voiceBtn.onclick = () => {
     voiceBtn.classList.add('active');
-    voiceBtn.textContent = '🎤 듣는 중...';
+    voiceBtn.textContent = '🔴';
     recognition.start();
-    setTimeout(() => { voiceBtn.textContent = '🎤 음성 명령'; }, 500);
   };
 } else {
   voiceBtn.disabled = true;
-  voiceBtn.textContent = '🎤 미지원 (Chrome 권장)';
+  voiceBtn.textContent = '🎤❌';
+  voiceBtn.title = 'Chrome 또는 Safari 권장';
 }
 
 function addVoiceLog(msg, type) {
