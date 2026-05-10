@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🤖 OpenClaw Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'SF Pro', 'Pretendard', sans-serif;
+  background: #1a0f0a; color: #fef3e8;
+  padding: 16px; min-height: 100vh;
+  background-image: radial-gradient(circle at top right, #2d1810 0%, #1a0f0a 50%);
+}
+.container { max-width: 1280px; margin: 0 auto; }
+header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; padding: 12px 18px;
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+}
+h1 { font-size: 22px; font-weight: 700; color: #fff; }
+.refresh-btn, .voice-btn {
+  background: #ff6b35; color: white; border: none; padding: 10px 18px;
+  border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
+  margin-left: 8px; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+}
+.voice-btn { background: #d63864; }
+.voice-btn.active { background: #ff4500; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1; box-shadow: 0 0 20px #ff4500} 50%{opacity:.6; box-shadow: 0 0 8px #ff4500} }
+.refresh-btn:hover, .voice-btn:hover { opacity: .85; transform: translateY(-1px); }
+
+.summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  margin-bottom: 16px;
+}
+.card {
+  background: #2a1810; border: 1px solid #4a2c1f;
+  border-radius: 10px; padding: 14px;
+  border-top: 3px solid #ff6b35;
+}
+.card-label { font-size: 11px; color: #c19878; text-transform: uppercase; letter-spacing: 0.5px; }
+.card-value { font-size: 22px; font-weight: 700; margin-top: 4px; color: #fef3e8; }
+.green { color: #5dd388; } .red { color: #ff6b6b; } .gray { color: #c19878; }
+.orange { color: #ff8c42; } .gold { color: #ffb74d; }
+
+.section {
+  background: #2a1810; border-radius: 10px;
+  padding: 16px; margin-bottom: 16px; border: 1px solid #4a2c1f;
+  border-left: 4px solid #ff6b35;
+}
+.section h2 {
+  font-size: 16px; margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid #4a2c1f; color: #ffb74d;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { background: #3a1f12; }
+th, td { padding: 10px 8px; text-align: left; }
+th { font-weight: 600; color: #ff8c42; text-transform: uppercase; font-size: 11px; }
+tbody tr { border-top: 1px solid #4a2c1f; }
+tbody tr:hover { background: #3a1f12; }
+.long { color: #5dd388; font-weight: 600; }
+.short { color: #ff6b6b; font-weight: 600; }
+
+.bot-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.bot {
+  padding: 8px 12px; background: #3a1f12; border-radius: 6px;
+  font-size: 12px; border-left: 3px solid #ff8c42;
+}
+.bot .pid { color: #c19878; font-size: 11px; }
+
+#voiceLog {
+  margin-top: 12px; padding: 10px;
+  background: #1a0f0a; border-radius: 6px;
+  font-size: 13px; min-height: 40px;
+  border: 1px solid #4a2c1f;
+}
+.voice-msg { padding: 4px 0; }
+.voice-msg .you { color: #ff8c42; font-weight: 600; }
+.voice-msg .bot { color: #5dd388; }
+
+.timestamp { font-size: 11px; color: #c19878; margin-top: 6px; }
+
+@media (max-width: 768px) {
+  .summary { grid-template-columns: repeat(2, 1fr); }
+  table { font-size: 11px; }
+  th, td { padding: 6px 4px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>🤖 OpenClaw Dashboard</h1>
+  <div>
+    <button class="voice-btn" id="voiceBtn">🎤 음성 명령</button>
+    <button class="refresh-btn" id="refreshBtn">🔄 새로고침</button>
+  </div>
+</header>
+
+<!-- 통합 자산 요약 -->
+<div class="summary" style="grid-template-columns: repeat(5, 1fr)">
+  <div class="card" style="background:linear-gradient(135deg,#1e3a5f,#2d4a7c)">
+    <div class="card-label">💰 총 자산 (KRW)</div>
+    <div class="card-value" id="grandTotal" style="font-size:24px">-</div>
+    <div class="timestamp" id="grandTotalUSD">-</div>
+  </div>
+  <div class="card">
+    <div class="card-label">투자 대비 수익률</div>
+    <div class="card-value" id="returnPct">-</div>
+    <div class="timestamp" id="profitKRW">-</div>
+  </div>
+  <div class="card">
+    <div class="card-label">바이낸스 (Futures+Spot)</div>
+    <div class="card-value" id="bnTotal">-</div>
+    <div class="timestamp" id="bnSplit">-</div>
+  </div>
+  <div class="card">
+    <div class="card-label">업비트 (KRW+코인)</div>
+    <div class="card-value" id="upTotal">-</div>
+    <div class="timestamp" id="upSplit">-</div>
+  </div>
+  <div class="card">
+    <div class="card-label">미실현 PnL</div>
+    <div class="card-value" id="totalPnl">-</div>
+    <div class="timestamp" id="updateTs">-</div>
+  </div>
+</div>
+
+<!-- 바이낸스 -->
+<div class="section">
+  <h2>📊 바이낸스 Futures</h2>
+  <table>
+    <thead><tr>
+      <th>심볼</th><th>방향</th><th>레버</th><th>진입가</th><th>현재가</th>
+      <th>수량</th><th>명목</th><th>PnL%</th><th>PnL($)</th>
+    </tr></thead>
+    <tbody id="bnTable"><tr><td colspan="9" style="text-align:center;color:#8a9ab0">로딩...</td></tr></tbody>
+  </table>
+</div>
+
+<!-- 업비트 -->
+<div class="section">
+  <h2>📊 업비트</h2>
+  <table>
+    <thead><tr>
+      <th>코인</th><th>보유</th><th>평균매입</th><th>현재가</th>
+      <th>투자금</th><th>평가금</th><th>PnL%</th><th>PnL(₩)</th>
+    </tr></thead>
+    <tbody id="upTable"><tr><td colspan="8" style="text-align:center;color:#8a9ab0">로딩...</td></tr></tbody>
+  </table>
+</div>
+
+<!-- 봇 -->
+<div class="section">
+  <h2>🤖 가동 봇</h2>
+  <div class="bot-list" id="botList"><div class="bot">로딩...</div></div>
+</div>
+
+<!-- 음성 로그 -->
+<div class="section">
+  <h2>🎤 음성 명령</h2>
+  <div style="font-size:12px;color:#8a9ab0;margin-bottom:8px">
+    예시: "포지션 보여줘", "잔고", "수익률", "봇 상태"
+  </div>
+  <div id="voiceLog">버튼을 눌러 음성 명령을 시작하세요.</div>
+</div>
+</div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  MSA — Frontend (GitHub Pages) ↔ Backend API (별도 호스트)
+//  ?api=URL 쿼리로 백엔드 URL 설정 (예: ?api=https://tunnel.example.com)
+//  설정값은 localStorage에 저장 → 다음 방문 시 자동 사용
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const params = new URLSearchParams(location.search);
+const apiFromQuery = params.get('api');
+if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
+const API_BASE = localStorage.getItem('OPENCLAW_API') || 'http://localhost:3000';
+console.log('API_BASE:', API_BASE);
+
+const fmt = {
+  usd: (n) => '$' + (n||0).toFixed(2),
+  pct: (n) => (n>=0?'+':'') + (n||0).toFixed(2) + '%',
+  krw: (n) => '₩' + Math.round(n||0).toLocaleString(),
+  qty: (n) => Number(n||0).toLocaleString(undefined, {maximumFractionDigits: 4}),
+};
+const cls = (n) => n>0 ? 'green' : n<0 ? 'red' : 'gray';
+
+async function refresh() {
+  try {
+    const r = await fetch(API_BASE + '/api/status').then(r=>r.json());
+    if (!r.ok) throw new Error(r.error);
+    const { binance, upbit, bots, summary } = r;
+
+    // 요약
+    document.getElementById('bnBalance').textContent = fmt.usd(binance.balance.total);
+    document.getElementById('bnAvail').textContent = '사용 가능: ' + fmt.usd(binance.balance.available);
+    const bnPnl = document.getElementById('bnPnl');
+    bnPnl.textContent = fmt.usd(summary.bnPnl);
+    bnPnl.className = 'card-value ' + cls(summary.bnPnl);
+    document.getElementById('bnPosCount').textContent = '포지션: ' + binance.positions.length + '개';
+    const upPnl = document.getElementById('upPnl');
+    upPnl.textContent = fmt.krw(summary.upPnlKRW);
+    upPnl.className = 'card-value ' + cls(summary.upPnlKRW);
+    document.getElementById('upPosCount').textContent = '보유: ' + upbit.holdings.length + '개';
+    const totalPnl = document.getElementById('totalPnl');
+    totalPnl.textContent = fmt.usd(summary.netPnlUSD);
+    totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
+    document.getElementById('updateTs').textContent = new Date().toLocaleTimeString('ko-KR');
+
+    // 바이낸스 테이블
+    document.getElementById('bnTable').innerHTML = binance.positions.map(p => `
+      <tr>
+        <td><strong>${p.symbol.replace('USDT','')}</strong></td>
+        <td class="${p.side==='LONG'?'long':'short'}">${p.side}</td>
+        <td>${p.leverage}x</td>
+        <td>$${p.entry.toFixed(p.entry<1?6:3)}</td>
+        <td>$${p.mark.toFixed(p.mark<1?6:3)}</td>
+        <td>${fmt.qty(p.qty)}</td>
+        <td>$${p.notional.toFixed(0)}</td>
+        <td class="${cls(p.pnlPct)}">${fmt.pct(p.pnlPct)}</td>
+        <td class="${cls(p.pnl)}">${fmt.usd(p.pnl)}</td>
+      </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:#8a9ab0">활성 포지션 없음</td></tr>';
+
+    // 업비트 테이블
+    document.getElementById('upTable').innerHTML = upbit.holdings.map(h => `
+      <tr>
+        <td><strong>${h.currency}</strong></td>
+        <td>${fmt.qty(h.balance)}</td>
+        <td>${fmt.krw(h.avgPrice)}</td>
+        <td>${fmt.krw(h.currentPrice)}</td>
+        <td>${fmt.krw(h.invest)}</td>
+        <td>${fmt.krw(h.value)}</td>
+        <td class="${cls(h.pnlPct)}">${fmt.pct(h.pnlPct)}</td>
+        <td class="${cls(h.pnlKRW)}">${fmt.krw(h.pnlKRW)}</td>
+      </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:#8a9ab0">보유 없음 또는 IP 인증 오류</td></tr>';
+
+    // 봇
+    document.getElementById('botList').innerHTML = bots.map(b => `
+      <div class="bot">
+        <div>${b.file}</div>
+        <div class="pid">PID ${b.pid}</div>
+      </div>`).join('') || '<div class="bot" style="border-left-color:#f87171">가동 봇 없음</div>';
+  } catch (e) {
+    console.error('refresh error:', e);
+    document.getElementById('updateTs').textContent = '오류: ' + e.message;
+  }
+}
+
+document.getElementById('refreshBtn').onclick = refresh;
+refresh();
+setInterval(refresh, 5000);  // 5초마다
+
+// 음성 인식
+const voiceBtn = document.getElementById('voiceBtn');
+const voiceLog = document.getElementById('voiceLog');
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+
+if (SR) {
+  recognition = new SR();
+  recognition.lang = 'ko-KR';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onresult = async (e) => {
+    const transcript = e.results[0][0].transcript;
+    addVoiceLog('🎤 " ' + transcript + ' "', 'you');
+    try {
+      const r = await fetch(API_BASE + '/api/voice', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text: transcript }) }).then(r=>r.json());
+      addVoiceLog('🤖 ' + r.action.say + ` (intent: ${r.intent})`, 'bot');
+      // intent에 따라 동작
+      if (['show_positions','show_balance','show_pnl','show_bots'].includes(r.intent)) refresh();
+      // TTS
+      if (window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance(r.action.say);
+        u.lang = 'ko-KR';
+        speechSynthesis.speak(u);
+      }
+    } catch (err) {
+      addVoiceLog('🤖 오류: ' + err.message, 'bot');
+    }
+  };
+  recognition.onend = () => voiceBtn.classList.remove('active');
+  recognition.onerror = (e) => {
+    voiceBtn.classList.remove('active');
+    addVoiceLog('🤖 인식 오류: ' + e.error, 'bot');
+  };
+
+  voiceBtn.onclick = () => {
+    voiceBtn.classList.add('active');
+    voiceBtn.textContent = '🎤 듣는 중...';
+    recognition.start();
+    setTimeout(() => { voiceBtn.textContent = '🎤 음성 명령'; }, 500);
+  };
+} else {
+  voiceBtn.disabled = true;
+  voiceBtn.textContent = '🎤 미지원 (Chrome 권장)';
+}
+
+function addVoiceLog(msg, type) {
+  const div = document.createElement('div');
+  div.className = 'voice-msg';
+  div.innerHTML = `<span class="${type}">${msg}</span>`;
+  voiceLog.appendChild(div);
+  voiceLog.scrollTop = voiceLog.scrollHeight;
+}
+</script>
+</body>
+</html>
