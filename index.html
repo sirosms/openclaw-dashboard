@@ -14,20 +14,20 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 :root {
-  --bg-0: #15080a;
-  --bg-1: #1f0e10;
-  --bg-2: #2a1410;
-  --bg-glass: rgba(42, 20, 16, 0.6);
-  --orange: #ff6b35;
-  --orange-2: #ff8c42;
-  --gold: #ffb74d;
-  --pink: #ff4d6d;
-  --green: #4ade80;
-  --red: #ff5d5d;
-  --text: #fef3e8;
-  --text-dim: #c19878;
-  --border: rgba(255, 140, 66, 0.18);
-  --border-strong: rgba(255, 107, 53, 0.4);
+  --bg-0: #050304;
+  --bg-1: #0d0708;
+  --bg-2: #15090a;
+  --bg-glass: rgba(15, 9, 7, 0.75);
+  --orange: #ff7a3d;
+  --orange-2: #ffa05c;
+  --gold: #ffc977;
+  --pink: #ff5577;
+  --green: #5dffa0;
+  --red: #ff7070;
+  --text: #fff5e8;
+  --text-dim: #d4a580;
+  --border: rgba(255, 122, 61, 0.22);
+  --border-strong: rgba(255, 122, 61, 0.5);
 }
 
 html, body {
@@ -43,9 +43,9 @@ body {
   padding: max(env(safe-area-inset-top), 12px) 12px max(env(safe-area-inset-bottom), 12px);
   min-height: 100vh;
   background-image:
-    radial-gradient(ellipse at 0% 0%, rgba(255, 107, 53, 0.18) 0%, transparent 50%),
-    radial-gradient(ellipse at 100% 0%, rgba(255, 77, 109, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 100%, rgba(255, 183, 77, 0.08) 0%, transparent 60%);
+    radial-gradient(ellipse at 0% 0%, rgba(255, 122, 61, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse at 100% 0%, rgba(255, 85, 119, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(255, 201, 119, 0.04) 0%, transparent 65%);
   background-attachment: fixed;
   overflow-x: hidden;
 }
@@ -74,14 +74,19 @@ header h1 {
   font-family: 'Inter', sans-serif;
 }
 .iron-icon {
-  width: 32px; height: 32px;
+  width: 80px; height: 80px;
   display: inline-block;
-  filter: drop-shadow(0 2px 8px rgba(0, 212, 255, 0.6));
-  animation: float 3s ease-in-out infinite;
+  filter:
+    drop-shadow(0 4px 16px rgba(0, 200, 255, 0.45))
+    drop-shadow(0 2px 10px rgba(255, 107, 53, 0.5));
+  animation: float 3.5s ease-in-out infinite;
 }
 @keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-3px) rotate(2deg); }
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.03); }
+}
+@media (max-width: 768px) {
+  .iron-icon { width: 64px; height: 64px; }
 }
 .header-actions { display: flex; gap: 8px; }
 .btn {
@@ -282,33 +287,67 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <header>
   <h1>
-    <svg class="iron-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <svg class="iron-icon" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="ironHelmet" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="#ffd54f"/>
-          <stop offset="50%" stop-color="#ff8f00"/>
-          <stop offset="100%" stop-color="#c62828"/>
+        <linearGradient id="goldHL" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#fff4c2"/>
+          <stop offset="40%" stop-color="#ffd54f"/>
+          <stop offset="100%" stop-color="#c47b00"/>
         </linearGradient>
-        <linearGradient id="eyeGlow" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="#80f0ff"/>
-          <stop offset="100%" stop-color="#00bcd4"/>
+        <linearGradient id="redBase" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#ff4444"/>
+          <stop offset="60%" stop-color="#c62828"/>
+          <stop offset="100%" stop-color="#7a0c0c"/>
         </linearGradient>
+        <radialGradient id="eyeBeam" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fff"/>
+          <stop offset="40%" stop-color="#a0f5ff"/>
+          <stop offset="100%" stop-color="#0095cc"/>
+        </radialGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="2"/></filter>
       </defs>
-      <!-- Helmet outline -->
-      <path fill="url(#ironHelmet)" stroke="#fff" stroke-width="1.5"
-        d="M50 8 L78 22 L82 50 L78 70 Q72 88 50 95 Q28 88 22 70 L18 50 L22 22 Z"/>
-      <!-- Eye visor -->
-      <path fill="url(#eyeGlow)" stroke="#80f0ff" stroke-width="0.8"
-        d="M28 38 L72 38 L76 48 L72 58 L28 58 L24 48 Z"/>
-      <!-- Eye highlights -->
-      <ellipse cx="38" cy="48" rx="6" ry="3" fill="#fff" opacity="0.9"/>
-      <ellipse cx="62" cy="48" rx="6" ry="3" fill="#fff" opacity="0.9"/>
+
+      <!-- Red outer cheeks/sides -->
+      <path fill="url(#redBase)" stroke="#3d0000" stroke-width="1.5"
+        d="M35 60 L25 110 Q30 160 100 185 Q170 160 175 110 L165 60 L155 90 L155 150 Q140 170 100 178 Q60 170 45 150 L45 90 Z"/>
+
+      <!-- Gold faceplate (얼굴 정면) -->
+      <path fill="url(#goldHL)" stroke="#5e3a00" stroke-width="1.5"
+        d="M55 55 L100 40 L145 55 L150 95 L140 130 L130 145 Q115 158 100 162 Q85 158 70 145 L60 130 L50 95 Z"/>
+
+      <!-- Jawline shadow -->
+      <path fill="#000" opacity="0.25"
+        d="M70 145 Q85 160 100 162 Q115 160 130 145 L125 150 Q113 158 100 158 Q87 158 75 150 Z"/>
+
+      <!-- Eye slots -->
+      <path fill="#0a0a0a" stroke="#3d2400" stroke-width="0.5"
+        d="M62 88 Q72 82 90 86 L92 100 Q80 102 64 98 Z"/>
+      <path fill="#0a0a0a" stroke="#3d2400" stroke-width="0.5"
+        d="M138 88 Q128 82 110 86 L108 100 Q120 102 136 98 Z"/>
+
+      <!-- Eye glow (cyan beams) -->
+      <ellipse cx="76" cy="92" rx="9" ry="4" fill="url(#eyeBeam)" filter="url(#glow)"/>
+      <ellipse cx="124" cy="92" rx="9" ry="4" fill="url(#eyeBeam)" filter="url(#glow)"/>
+      <ellipse cx="76" cy="92" rx="11" ry="2.5" fill="#fff" opacity="0.95"/>
+      <ellipse cx="124" cy="92" rx="11" ry="2.5" fill="#fff" opacity="0.95"/>
+
+      <!-- Nose ridge -->
+      <path fill="#000" opacity="0.2" d="M97 95 L100 115 L103 95 Z"/>
+
       <!-- Mouth grille -->
-      <line x1="40" y1="73" x2="60" y2="73" stroke="#1a0f0a" stroke-width="1.5"/>
-      <line x1="42" y1="78" x2="58" y2="78" stroke="#1a0f0a" stroke-width="1.5"/>
-      <line x1="44" y1="83" x2="56" y2="83" stroke="#1a0f0a" stroke-width="1.5"/>
+      <rect x="78" y="125" width="44" height="2.5" rx="1" fill="#1a0f0a"/>
+      <rect x="80" y="131" width="40" height="2.5" rx="1" fill="#1a0f0a"/>
+      <rect x="82" y="137" width="36" height="2.5" rx="1" fill="#1a0f0a"/>
+      <rect x="85" y="143" width="30" height="2.5" rx="1" fill="#1a0f0a"/>
+
+      <!-- Highlights -->
+      <path fill="#fff" opacity="0.4" d="M62 65 L75 60 L72 75 L60 80 Z"/>
+      <path fill="#fff" opacity="0.3" d="M125 60 L138 65 L140 80 L128 75 Z"/>
     </svg>
-    JARVIS
+    <span style="display:flex;flex-direction:column;line-height:1">
+      <span>JARVIS</span>
+      <span style="font-size:10px;letter-spacing:2px;opacity:0.7;font-weight:500">TRADING ASSISTANT</span>
+    </span>
   </h1>
   <div class="header-actions">
     <button class="btn voice" id="voiceBtn">🎤</button>
@@ -323,8 +362,8 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="grandTotal">-</div>
     <div class="timestamp" id="grandTotalUSD">-</div>
   </div>
-  <div class="card">
-    <div class="card-label">📈 수익률</div>
+  <div class="card" style="cursor:pointer" onclick="setInvest()">
+    <div class="card-label">📈 수익률 <span style="opacity:0.5">✏️</span></div>
     <div class="card-value" id="returnPct">-</div>
     <div class="timestamp" id="profitKRW">-</div>
   </div>
@@ -417,17 +456,22 @@ async function refresh() {
     document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
     document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / (r.exchange?.USD_KRW || 1476));
 
-    // 수익률
+    // 수익률 — 1) localStorage(수동 입력) 2) Backend(자동) 3) 미설정
     const returnPctEl = document.getElementById('returnPct');
     const profitKRWEl = document.getElementById('profitKRW');
-    if (summary.investKRW > 0) {
-      returnPctEl.textContent = fmt.pct(summary.returnPct);
-      returnPctEl.className = 'card-value ' + cls(summary.returnPct);
-      profitKRWEl.textContent = (summary.totalProfitKRW>=0?'+':'') + fmt.krw(summary.totalProfitKRW);
+    const manualInvest = parseFloat(localStorage.getItem('JARVIS_INVEST_KRW') || '0');
+    let investKRW = manualInvest > 0 ? manualInvest : (summary.investKRW || 0);
+    if (investKRW > 0) {
+      const profit = grandTotal - investKRW;
+      const rPct = (profit / investKRW) * 100;
+      returnPctEl.textContent = fmt.pct(rPct);
+      returnPctEl.className = 'card-value ' + cls(rPct);
+      profitKRWEl.innerHTML = (profit>=0?'+':'') + fmt.krw(profit) +
+        '<br><span style="opacity:0.6;font-size:10px">투자 ' + fmt.krw(investKRW) + '</span>';
     } else {
-      returnPctEl.textContent = '-';
-      returnPctEl.className = 'card-value gray';
-      profitKRWEl.textContent = '입금 이력 조회 중...';
+      returnPctEl.textContent = '클릭✏️';
+      returnPctEl.className = 'card-value gold';
+      profitKRWEl.textContent = '투자금 입력하기';
     }
 
     // 바이낸스
