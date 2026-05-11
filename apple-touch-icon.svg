@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1a0507"/>
+      <stop offset="100%" stop-color="#000"/>
+    </linearGradient>
+    <linearGradient id="goldHL" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fff4c2"/>
+      <stop offset="30%" stop-color="#ffd54f"/>
+      <stop offset="100%" stop-color="#7a4a00"/>
+    </linearGradient>
+    <linearGradient id="redBase" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ff5252"/>
+      <stop offset="100%" stop-color="#5a0e0e"/>
+    </linearGradient>
+    <radialGradient id="eyeGlow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="50%" stop-color="#80efff"/>
+      <stop offset="100%" stop-color="#00bcd4"/>
+    </radialGradient>
+    <filter id="g"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+  <rect width="180" height="180" fill="url(#bg)" rx="36"/>
+  <g transform="translate(-10, -5) scale(1.0)">
+    <path fill="url(#redBase)" stroke="#2a0000" stroke-width="1.6" d="M30 50 L22 110 Q28 165 100 188 Q172 165 178 110 L170 50 L158 75 L158 150 Q140 172 100 178 Q60 172 42 150 L42 75 Z"/>
+    <path fill="url(#goldHL)" stroke="#3a2400" stroke-width="1.6" d="M50 42 L100 26 L150 42 L155 88 L148 128 L138 150 Q120 165 100 168 Q80 165 62 150 L52 128 L45 88 Z"/>
+    <path fill="#000" stroke="#3d2400" stroke-width="0.8" d="M58 76 Q70 68 92 74 L94 92 Q78 96 60 91 Z"/>
+    <path fill="#000" stroke="#3d2400" stroke-width="0.8" d="M142 76 Q130 68 108 74 L106 92 Q122 96 140 91 Z"/>
+    <ellipse cx="76" cy="84" rx="14" ry="5" fill="url(#eyeGlow)" filter="url(#g)"/>
+    <ellipse cx="124" cy="84" rx="14" ry="5" fill="url(#eyeGlow)" filter="url(#g)"/>
+    <ellipse cx="76" cy="84" rx="10" ry="2.2" fill="#fff"/>
+    <ellipse cx="124" cy="84" rx="10" ry="2.2" fill="#fff"/>
+    <rect x="74" y="124" width="52" height="2.5" rx="1.2" fill="#0a0a0a"/>
+    <rect x="76" y="130" width="48" height="2.5" rx="1.2" fill="#0a0a0a"/>
+    <rect x="78" y="136" width="44" height="2.5" rx="1.2" fill="#0a0a0a"/>
+    <rect x="82" y="142" width="36" height="2.5" rx="1.2" fill="#0a0a0a"/>
+  </g>
+</svg>

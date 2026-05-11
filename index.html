@@ -7,7 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0306">
 <title>JARVIS — Iron Man Trading Assistant</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='r' x1='0' x2='0' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ff5252'/%3E%3Cstop offset='1' stop-color='%23990000'/%3E%3C/linearGradient%3E%3ClinearGradient id='g' x1='0' x2='0' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff4c2'/%3E%3Cstop offset='0.5' stop-color='%23ffc107'/%3E%3Cstop offset='1' stop-color='%23a67400'/%3E%3C/linearGradient%3E%3CradialGradient id='e' cx='50%25' cy='50%25' r='50%25'%3E%3Cstop offset='0' stop-color='%23ffffff'/%3E%3Cstop offset='0.5' stop-color='%2380efff'/%3E%3Cstop offset='1' stop-color='%2300bcd4'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath fill='url(%23r)' stroke='%23330000' stroke-width='0.8' d='M10 22 L8 38 Q10 52 32 60 Q54 52 56 38 L54 22 L48 32 L48 48 Q42 56 32 58 Q22 56 16 48 L16 32 Z'/%3E%3Cpath fill='url(%23g)' stroke='%231a1000' stroke-width='0.8' d='M16 18 L32 12 L48 18 L50 32 L46 44 Q40 52 32 53 Q24 52 18 44 L14 32 Z'/%3E%3Cellipse cx='22' cy='28' rx='5' ry='2' fill='url(%23e)'/%3E%3Cellipse cx='42' cy='28' rx='5' ry='2' fill='url(%23e)'/%3E%3Crect x='24' y='40' width='16' height='1.5' rx='0.7' fill='%23000'/%3E%3Crect x='25' y='44' width='14' height='1.5' rx='0.7' fill='%23000'/%3E%3Crect x='27' y='48' width='10' height='1.5' rx='0.7' fill='%23000'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link rel="apple-touch-icon" href="./apple-touch-icon.svg">
+<link rel="mask-icon" href="./favicon.svg" color="#ff5252">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -74,7 +76,7 @@ header h1 {
   font-family: 'Inter', sans-serif;
 }
 .iron-icon {
-  width: 90px; height: 100px;
+  width: 64px; height: 64px;
   display: inline-block;
   filter:
     drop-shadow(0 6px 20px rgba(0, 188, 212, 0.5))
@@ -86,10 +88,10 @@ header h1 {
   50% { transform: translateY(-5px) scale(1.04); }
 }
 @media (max-width: 768px) {
-  .iron-icon { width: 70px; height: 78px; }
+  .iron-icon { width: 52px; height: 52px; }
 }
 @media (max-width: 480px) {
-  .iron-icon { width: 56px; height: 62px; }
+  .iron-icon { width: 44px; height: 44px; }
 }
 .header-actions { display: flex; gap: 8px; }
 .btn {
@@ -282,6 +284,12 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   .summary { grid-template-columns: 1fr !important; }
   .card.hero { grid-column: 1; }
   header h1::before { display: none; }
+  /* PnL/수익률 카드 강조 */
+  .pnl-priority, .return-priority {
+    border-top: 3px solid var(--gold) !important;
+    background: linear-gradient(135deg, rgba(255, 122, 61, 0.12), rgba(255, 201, 119, 0.06)) !important;
+  }
+  .pnl-priority .card-value, .return-priority .card-value { font-size: 26px !important; }
 }
 </style>
 </head>
@@ -290,7 +298,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <header>
   <h1>
-    <svg class="iron-icon" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <svg class="iron-icon" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="goldHL" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stop-color="#fff4c2"/>
@@ -327,59 +335,53 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
         <filter id="glow2"><feGaussianBlur stdDeviation="4"/></filter>
       </defs>
 
-      <!-- Red outer helmet -->
+      <!-- Red outer helmet (얼굴만, 어깨 제거) -->
       <path fill="url(#redBase)" stroke="#2a0000" stroke-width="1.8"
-        d="M30 55 L20 115 Q26 165 100 195 Q174 165 180 115 L170 55 L158 88 L158 155 Q140 175 100 184 Q60 175 42 155 L42 88 Z"/>
+        d="M30 50 L22 110 Q28 165 100 188 Q172 165 178 110 L170 50 L158 75 L158 150 Q140 172 100 178 Q60 172 42 150 L42 75 Z"/>
 
       <!-- Gold faceplate (정면 얼굴) -->
       <path fill="url(#goldHL)" stroke="#3a2400" stroke-width="1.8"
-        d="M50 48 L100 32 L150 48 L155 90 L148 130 L138 150 Q120 163 100 167 Q80 163 62 150 L52 130 L45 90 Z"/>
+        d="M50 42 L100 26 L150 42 L155 88 L148 128 L138 150 Q120 165 100 168 Q80 165 62 150 L52 128 L45 88 Z"/>
 
       <!-- Gold shine highlight -->
       <path fill="url(#goldShine)" opacity="0.5"
-        d="M55 55 L100 42 L145 55 L142 90 L130 80 L115 60 L100 55 L85 60 L70 80 L58 90 Z"/>
+        d="M55 50 L100 36 L145 50 L142 85 L130 75 L115 55 L100 50 L85 55 L70 75 L58 85 Z"/>
 
       <!-- Faceplate panel lines -->
       <path fill="none" stroke="#5e3a00" stroke-width="0.8" opacity="0.6"
-        d="M62 88 Q100 76 138 88 M62 100 Q100 95 138 100 M70 120 Q100 130 130 120"/>
+        d="M62 84 Q100 72 138 84 M62 96 Q100 91 138 96 M70 118 Q100 128 130 118"/>
 
-      <!-- Eye slots (검은 배경) -->
+      <!-- Eye slots -->
       <path fill="#000" stroke="#3d2400" stroke-width="0.8"
-        d="M58 82 Q70 74 92 80 L94 96 Q78 100 60 95 Z"/>
+        d="M58 76 Q70 68 92 74 L94 92 Q78 96 60 91 Z"/>
       <path fill="#000" stroke="#3d2400" stroke-width="0.8"
-        d="M142 82 Q130 74 108 80 L106 96 Q122 100 140 95 Z"/>
+        d="M142 76 Q130 68 108 74 L106 92 Q122 96 140 91 Z"/>
 
-      <!-- Eye glow (시안 발광) -->
-      <ellipse cx="76" cy="88" rx="14" ry="5" fill="url(#eyeGlow)" filter="url(#glow1)"/>
-      <ellipse cx="124" cy="88" rx="14" ry="5" fill="url(#eyeGlow)" filter="url(#glow1)"/>
-      <ellipse cx="76" cy="88" rx="10" ry="2.2" fill="#fff"/>
-      <ellipse cx="124" cy="88" rx="10" ry="2.2" fill="#fff"/>
+      <!-- Eye glow -->
+      <ellipse cx="76" cy="84" rx="14" ry="5" fill="url(#eyeGlow)" filter="url(#glow1)"/>
+      <ellipse cx="124" cy="84" rx="14" ry="5" fill="url(#eyeGlow)" filter="url(#glow1)"/>
+      <ellipse cx="76" cy="84" rx="10" ry="2.2" fill="#fff"/>
+      <ellipse cx="124" cy="84" rx="10" ry="2.2" fill="#fff"/>
 
       <!-- Eyebrow shadow -->
-      <path fill="#000" opacity="0.3" d="M55 76 L96 70 L94 80 L57 84 Z"/>
-      <path fill="#000" opacity="0.3" d="M145 76 L104 70 L106 80 L143 84 Z"/>
+      <path fill="#000" opacity="0.3" d="M55 70 L96 64 L94 76 L57 80 Z"/>
+      <path fill="#000" opacity="0.3" d="M145 70 L104 64 L106 76 L143 80 Z"/>
 
       <!-- Nose ridge -->
-      <path fill="#000" opacity="0.25" d="M96 90 L100 120 L104 90 L102 115 L98 115 Z"/>
+      <path fill="#000" opacity="0.25" d="M96 86 L100 116 L104 86 L102 112 L98 112 Z"/>
 
-      <!-- Mouth grille (격자) -->
-      <rect x="74" y="128" width="52" height="2.5" rx="1.2" fill="#0a0a0a"/>
-      <rect x="76" y="134" width="48" height="2.5" rx="1.2" fill="#0a0a0a"/>
-      <rect x="78" y="140" width="44" height="2.5" rx="1.2" fill="#0a0a0a"/>
-      <rect x="82" y="146" width="36" height="2.5" rx="1.2" fill="#0a0a0a"/>
+      <!-- Mouth grille -->
+      <rect x="74" y="124" width="52" height="2.5" rx="1.2" fill="#0a0a0a"/>
+      <rect x="76" y="130" width="48" height="2.5" rx="1.2" fill="#0a0a0a"/>
+      <rect x="78" y="136" width="44" height="2.5" rx="1.2" fill="#0a0a0a"/>
+      <rect x="82" y="142" width="36" height="2.5" rx="1.2" fill="#0a0a0a"/>
 
-      <!-- Jawline -->
-      <path fill="#000" opacity="0.3" d="M62 150 Q82 165 100 167 Q118 165 138 150 L132 154 Q116 162 100 162 Q84 162 68 154 Z"/>
+      <!-- Jawline shadow -->
+      <path fill="#000" opacity="0.3" d="M62 150 Q82 165 100 168 Q118 165 138 150 L132 154 Q116 162 100 162 Q84 162 68 154 Z"/>
 
-      <!-- Arc Reactor (가슴) -->
-      <circle cx="100" cy="208" r="14" fill="url(#arcReactor)" filter="url(#glow2)"/>
-      <circle cx="100" cy="208" r="10" fill="url(#arcReactor)"/>
-      <circle cx="100" cy="208" r="5" fill="#ffffff"/>
-      <circle cx="100" cy="208" r="2" fill="#a0f5ff"/>
-
-      <!-- Helmet outer highlights -->
-      <path fill="#ffffff" opacity="0.25" d="M40 65 L48 60 L46 80 L38 85 Z"/>
-      <path fill="#ffffff" opacity="0.2" d="M155 60 L162 65 L160 85 L152 80 Z"/>
+      <!-- Helmet highlights -->
+      <path fill="#ffffff" opacity="0.25" d="M40 58 L48 53 L46 75 L38 80 Z"/>
+      <path fill="#ffffff" opacity="0.2" d="M155 53 L162 58 L160 80 L152 75 Z"/>
     </svg>
     <span style="display:flex;flex-direction:column;line-height:1">
       <span style="background:linear-gradient(135deg,#fff4c2 0%,#ffd54f 50%,#d99500 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:900">JARVIS</span>
@@ -392,32 +394,37 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   </div>
 </header>
 
-<!-- 통합 자산 요약 -->
+<!-- 통합 자산 요약 (모바일에서 PnL/수익률 우선 노출) -->
 <div class="summary">
+  <!-- 1. 미실현 PnL (모바일 1번째) -->
+  <div class="card pnl-priority">
+    <div class="card-label">💹 미실현 PnL</div>
+    <div class="card-value" id="totalPnl">-</div>
+    <div class="timestamp" id="updateTs">-</div>
+  </div>
+  <!-- 2. 수익률 (모바일 2번째) -->
+  <div class="card return-priority" style="cursor:pointer" onclick="setInvest()">
+    <div class="card-label">📈 수익률 <span style="opacity:0.5">✏️</span></div>
+    <div class="card-value" id="returnPct">-</div>
+    <div class="timestamp" id="profitKRW">-</div>
+  </div>
+  <!-- 3. 총 자산 -->
   <div class="card hero">
     <div class="card-label">💰 총 자산</div>
     <div class="card-value" id="grandTotal">-</div>
     <div class="timestamp" id="grandTotalUSD">-</div>
   </div>
-  <div class="card" style="cursor:pointer" onclick="setInvest()">
-    <div class="card-label">📈 수익률 <span style="opacity:0.5">✏️</span></div>
-    <div class="card-value" id="returnPct">-</div>
-    <div class="timestamp" id="profitKRW">-</div>
-  </div>
+  <!-- 4. 바이낸스 -->
   <div class="card">
     <div class="card-label">바이낸스</div>
     <div class="card-value" id="bnTotal">-</div>
     <div class="timestamp" id="bnSplit">-</div>
   </div>
+  <!-- 5. 업비트 -->
   <div class="card">
     <div class="card-label">업비트</div>
     <div class="card-value" id="upTotal">-</div>
     <div class="timestamp" id="upSplit">-</div>
-  </div>
-  <div class="card">
-    <div class="card-label">미실현 PnL</div>
-    <div class="card-value" id="totalPnl">-</div>
-    <div class="timestamp" id="updateTs">-</div>
   </div>
 </div>
 
@@ -502,10 +509,12 @@ async function refresh() {
     document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
     document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / (r.exchange?.USD_KRW || 1476));
 
-    // 수익률 — 1) localStorage(수동 입력) 2) Backend(자동) 3) 미설정
+    // 수익률 — localStorage(입금-출금) 우선
     const returnPctEl = document.getElementById('returnPct');
     const profitKRWEl = document.getElementById('profitKRW');
-    const manualInvest = parseFloat(localStorage.getItem('JARVIS_INVEST_KRW') || '0');
+    const dep = parseFloat(localStorage.getItem('JARVIS_DEPOSIT') || '0');
+    const wd  = parseFloat(localStorage.getItem('JARVIS_WITHDRAW') || '0');
+    const manualInvest = dep > 0 ? (dep - wd) : parseFloat(localStorage.getItem('JARVIS_INVEST_KRW') || '0');
     let investKRW = manualInvest > 0 ? manualInvest : (summary.investKRW || 0);
     if (investKRW > 0) {
       const profit = grandTotal - investKRW;
@@ -513,11 +522,13 @@ async function refresh() {
       returnPctEl.textContent = fmt.pct(rPct);
       returnPctEl.className = 'card-value ' + cls(rPct);
       profitKRWEl.innerHTML = (profit>=0?'+':'') + fmt.krw(profit) +
-        '<br><span style="opacity:0.6;font-size:10px">투자 ' + fmt.krw(investKRW) + '</span>';
+        (dep > 0
+          ? '<br><span style="opacity:0.6;font-size:10px">입금 ₩' + dep.toLocaleString() + ' - 출금 ₩' + wd.toLocaleString() + '</span>'
+          : '<br><span style="opacity:0.6;font-size:10px">투자 ' + fmt.krw(investKRW) + '</span>');
     } else {
       returnPctEl.textContent = '클릭✏️';
       returnPctEl.className = 'card-value gold';
-      profitKRWEl.textContent = '투자금 입력하기';
+      profitKRWEl.textContent = '입금/출금 입력하기';
     }
 
     // 바이낸스
@@ -628,6 +639,24 @@ if (SR) {
   voiceBtn.disabled = true;
   voiceBtn.textContent = '🎤❌';
   voiceBtn.title = 'Chrome 또는 Safari 권장';
+}
+
+// 입금/출금 별도 입력 → 순 투자금 계산
+function setInvest() {
+  const oldDep = parseFloat(localStorage.getItem('JARVIS_DEPOSIT') || '0');
+  const oldWd  = parseFloat(localStorage.getItem('JARVIS_WITHDRAW') || '0');
+  const depStr = prompt(`총 입금액 (₩)\n현재: ${oldDep.toLocaleString()}`, oldDep.toString());
+  if (depStr === null) return;
+  const wdStr = prompt(`총 출금액 (₩)\n현재: ${oldWd.toLocaleString()}`, oldWd.toString());
+  if (wdStr === null) return;
+  const dep = parseFloat(depStr.replace(/,/g, '')) || 0;
+  const wd = parseFloat(wdStr.replace(/,/g, '')) || 0;
+  const net = dep - wd;
+  localStorage.setItem('JARVIS_DEPOSIT', String(dep));
+  localStorage.setItem('JARVIS_WITHDRAW', String(wd));
+  localStorage.setItem('JARVIS_INVEST_KRW', String(net));
+  alert(`✅ 저장 완료\n입금: ₩${dep.toLocaleString()}\n출금: ₩${wd.toLocaleString()}\n순투자: ₩${net.toLocaleString()}`);
+  refresh();
 }
 
 function addVoiceLog(msg, type) {
