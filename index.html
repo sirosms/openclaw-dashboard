@@ -436,8 +436,9 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
       <thead><tr>
         <th>심볼</th><th>방향</th><th>레버</th><th>진입가</th><th>현재가</th>
         <th>수량</th><th>명목</th><th>PnL%</th><th>PnL($)</th>
+        <th>SL ↓</th><th>TP1 / TP2 / TP3</th>
       </tr></thead>
-      <tbody id="bnTable"><tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
+      <tbody id="bnTable"><tr><td colspan="11" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -546,18 +547,30 @@ async function refresh() {
     document.getElementById('updateTs').textContent = '⏱ ' + new Date().toLocaleTimeString('ko-KR');
 
     // 바이낸스 테이블
-    document.getElementById('bnTable').innerHTML = binance.positions.map(p => `
+    document.getElementById('bnTable').innerHTML = binance.positions.map(p => {
+      const fixDigits = (v) => v.toFixed(v<1?6:3);
+      const g = p.guard;
+      const slCell = g ? `<span class="mono short">$${fixDigits(g.sl)}<br><span style="font-size:11px;opacity:0.7">${g.slPct}%</span></span>` : '-';
+      const tpCell = g ? `<span class="mono long" style="font-size:12px">
+        T1 $${fixDigits(g.tp1)} <span style="opacity:0.6">(+${g.tp1Pct}%)</span><br>
+        T2 $${fixDigits(g.tp2)} <span style="opacity:0.6">(+${g.tp2Pct}%)</span><br>
+        T3 $${fixDigits(g.tp3)} <span style="opacity:0.6">(+${g.tp3Pct}%)</span>
+      </span>` : '-';
+      return `
       <tr>
         <td><span class="symbol-tag">${p.symbol.replace('USDT','')}</span></td>
         <td class="${p.side==='LONG'?'long':'short'}">${p.side}</td>
         <td class="mono">${p.leverage}x</td>
-        <td class="mono">$${p.entry.toFixed(p.entry<1?6:3)}</td>
-        <td class="mono">$${p.mark.toFixed(p.mark<1?6:3)}</td>
+        <td class="mono">$${fixDigits(p.entry)}</td>
+        <td class="mono">$${fixDigits(p.mark)}</td>
         <td class="mono">${fmt.qty(p.qty)}</td>
         <td class="mono">$${p.notional.toFixed(0)}</td>
         <td class="mono ${cls(p.pnlPct)}">${fmt.pct(p.pnlPct)}</td>
         <td class="mono ${cls(p.pnl)}">${fmt.usd(p.pnl)}</td>
-      </tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
+        <td>${slCell}</td>
+        <td>${tpCell}</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="11" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
 
     // 업비트 테이블
     document.getElementById('upTable').innerHTML = upbit.holdings.map(h => `
