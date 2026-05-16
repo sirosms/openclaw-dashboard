@@ -435,10 +435,10 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <table>
       <thead><tr>
         <th>심볼</th><th>방향</th><th>레버</th><th>진입가</th><th>현재가</th>
-        <th>수량</th><th>명목</th><th>PnL%</th><th>PnL($)</th>
+        <th>수량</th><th>명목</th><th>마진</th><th>PnL%</th><th>PnL($)</th>
         <th>SL ↓</th><th>TP1 / TP2 / TP3</th>
       </tr></thead>
-      <tbody id="bnTable"><tr><td colspan="11" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
+      <tbody id="bnTable"><tr><td colspan="12" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -565,12 +565,13 @@ async function refresh() {
         <td class="mono">$${fixDigits(p.mark)}</td>
         <td class="mono">${fmt.qty(p.qty)}</td>
         <td class="mono">$${p.notional.toFixed(0)}</td>
+        <td class="mono gold">$${p.margin.toFixed(2)}</td>
         <td class="mono ${cls(p.pnlPct)}">${fmt.pct(p.pnlPct)}</td>
         <td class="mono ${cls(p.pnl)}">${fmt.usd(p.pnl)}</td>
         <td>${slCell}</td>
         <td>${tpCell}</td>
       </tr>`;
-    }).join('') || `<tr><td colspan="11" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
+    }).join('') || `<tr><td colspan="12" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
 
     // 업비트 테이블
     document.getElementById('upTable').innerHTML = upbit.holdings.map(h => `
