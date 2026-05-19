@@ -426,18 +426,21 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-label">💰 총 자산</div>
     <div class="card-value" id="grandTotal">-</div>
     <div class="timestamp" id="grandTotalUSD">-</div>
+    <div class="timestamp" id="grandTotalPnl" style="font-size:10px">-</div>
   </div>
   <!-- 4. 바이낸스 -->
   <div class="card">
     <div class="card-label">바이낸스</div>
     <div class="card-value" id="bnTotal">-</div>
     <div class="timestamp" id="bnSplit">-</div>
+    <div class="timestamp" id="bnTotalPnl" style="font-size:10px">-</div>
   </div>
   <!-- 5. 업비트 -->
   <div class="card">
     <div class="card-label">업비트</div>
     <div class="card-value" id="upTotal">-</div>
     <div class="timestamp" id="upSplit">-</div>
+    <div class="timestamp" id="upTotalPnl" style="font-size:10px">-</div>
   </div>
   <!-- 환율 카드 -->
   <div class="card">
@@ -593,6 +596,23 @@ async function refresh() {
     // 업비트
     document.getElementById('upTotal').textContent = fmt.krw(upbit.totalKRW || 0);
     document.getElementById('upSplit').textContent = `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}`;
+
+    // 미실현 PnL 합산 표시 (각 카드 보조 라인)
+    const _usdkrw = (r.exchange && r.exchange.USD_KRW) || 1476;
+    const _bnPnlKRW = (summary.bnPnl || 0) * _usdkrw;
+    const _upPnlKRW = summary.upPnlKRW || 0;
+    const _totalPnlKRW = _bnPnlKRW + _upPnlKRW;
+
+    const setPnlLabel = (id, pnlKRW) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const sign = pnlKRW >= 0 ? '+' : '';
+      el.textContent = `미실현 ${sign}${fmt.krw(pnlKRW)}`;
+      el.style.color = pnlKRW >= 0 ? 'var(--green)' : 'var(--red)';
+    };
+    setPnlLabel('grandTotalPnl', _totalPnlKRW);
+    setPnlLabel('bnTotalPnl', _bnPnlKRW);
+    setPnlLabel('upTotalPnl', _upPnlKRW);
 
     // PnL
     // 환율 표시
