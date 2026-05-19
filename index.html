@@ -422,9 +422,9 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   .pnl-priority    { order: 1 !important; }   /* 💹 미실현 PnL (통합) */
   #bnPnlCard       { order: 2 !important; }   /* 🟡 바이낸스 PnL */
   #upPnlCard       { order: 3 !important; }   /* 🔵 업비트 PnL */
-  .card.hero       { order: 4 !important; }   /* 💰 총 자산 — 업비트 PnL 다음 */
+  .return-priority { order: 4 !important; }   /* 📈 수익률 (ROI) — 업비트 PnL 다음 */
   #mrCard          { order: 5 !important; }   /* ⚡ Margin Ratio (위험 알림) */
-  .return-priority { order: 6 !important; }   /* 📈 수익률 (ROI) */
+  .card.hero       { order: 6 !important; }   /* 💰 총 자산 — 가장 마지막 */
   /* 나머지 (바이낸스 잔고, 업비트 잔고, 환율, 주식 미니카드 등) */
   .summary .card:not(.pnl-priority):not(.return-priority):not(.hero):not(#mrCard):not(#bnPnlCard):not(#upPnlCard) {
     order: 10;
