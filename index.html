@@ -400,6 +400,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   <div class="card pnl-priority">
     <div class="card-label">💹 미실현 PnL (통합)</div>
     <div class="card-value" id="totalPnl">-</div>
+    <div class="timestamp" id="totalPnlKRW">-</div>
     <div class="timestamp" id="updateTs">-</div>
   </div>
   <!-- 1-1. 바이낸스 미실현 PnL -->
@@ -431,6 +432,12 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-label">바이낸스</div>
     <div class="card-value" id="bnTotal">-</div>
     <div class="timestamp" id="bnSplit">-</div>
+  </div>
+  <!-- 환율 카드 -->
+  <div class="card">
+    <div class="card-label">💱 환율 USD/KRW</div>
+    <div class="card-value" id="fxRate" style="font-size:22px">-</div>
+    <div class="timestamp" id="fxTs">실시간</div>
   </div>
   <!-- 5. 업비트 -->
   <div class="card">
@@ -466,6 +473,14 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
       </tr></thead>
       <tbody id="upTable"><tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
     </table>
+  </div>
+</div>
+
+<!-- 주식 시세 (NVIDIA / SK하이닉스) -->
+<div class="section">
+  <h2>📈 주식 시세</h2>
+  <div class="summary" id="stockList">
+    <div class="card">로딩...</div>
   </div>
 </div>
 
@@ -568,25 +583,42 @@ async function refresh() {
     document.getElementById('upSplit').textContent = `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}`;
 
     // PnL
+    // 환율 표시
+    const usdkrwReal = (r.exchange && r.exchange.USD_KRW) || 1476;
+    document.getElementById('fxRate').textContent = '₩' + usdkrwReal.toLocaleString();
+
+    // PnL% 계산용 마진/투자금
+    const bnMargin = (binance.positions || []).reduce((a, p) => a + (p.margin || 0), 0);
+    const upInvest = upbit.coinInvest || 0;  // KRW 기준 업비트 코인 매수금액
+    const totalCapitalUSD = bnMargin + (upInvest / usdkrwReal);
+    const bnPctVal = bnMargin > 0 ? (summary.bnPnl / bnMargin) * 100 : 0;
+    const upPctVal = upInvest > 0 ? (summary.upPnlKRW / upInvest) * 100 : 0;
+    const totalPctVal = totalCapitalUSD > 0 ? (summary.netPnlUSD / totalCapitalUSD) * 100 : 0;
+
     const totalPnl = document.getElementById('totalPnl');
-    totalPnl.textContent = fmt.usd(summary.netPnlUSD);
+    totalPnl.textContent = fmt.usd(summary.netPnlUSD) + ' (' + fmt.pct(totalPctVal) + ')';
     totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
+    // 통합 PnL 원화 환산 표시
+    const totalPnlKRW = summary.netPnlUSD * usdkrwReal;
+    const krwEl = document.getElementById('totalPnlKRW');
+    krwEl.textContent = (totalPnlKRW >= 0 ? '+' : '') + fmt.krw(totalPnlKRW);
+    krwEl.style.color = totalPnlKRW >= 0 ? 'var(--green)' : 'var(--red)';
     document.getElementById('updateTs').textContent = '⏱ ' + new Date().toLocaleTimeString('ko-KR');
 
-    // 바이낸스 / 업비트 분리 PnL
+    // 바이낸스 / 업비트 분리 PnL + %
     const bnPnlEl = document.getElementById('bnPnl');
     const bnPnlVal = summary.bnPnl || 0;
-    const usdkrw = (r.exchange && r.exchange.USD_KRW) || 1476;
-    bnPnlEl.textContent = fmt.usd(bnPnlVal);
+    const usdkrw = usdkrwReal;
+    bnPnlEl.textContent = fmt.usd(bnPnlVal) + ' (' + fmt.pct(bnPctVal) + ')';
     bnPnlEl.className = 'card-value ' + cls(bnPnlVal);
-    document.getElementById('bnPnlKRW').textContent = fmt.krw(bnPnlVal * usdkrw);
+    document.getElementById('bnPnlKRW').textContent = fmt.krw(bnPnlVal * usdkrw) + ' · 마진 $' + bnMargin.toFixed(0);
 
     const upPnlEl = document.getElementById('upPnl');
     const upPnlKRW = summary.upPnlKRW || 0;
     const upPnlUSD = summary.upPnlUSD || 0;
-    upPnlEl.textContent = fmt.krw(upPnlKRW);
+    upPnlEl.textContent = fmt.krw(upPnlKRW) + ' (' + fmt.pct(upPctVal) + ')';
     upPnlEl.className = 'card-value ' + cls(upPnlKRW);
-    document.getElementById('upPnlUSD').textContent = fmt.usd(upPnlUSD);
+    document.getElementById('upPnlUSD').textContent = fmt.usd(upPnlUSD) + ' · 투자 ' + fmt.krw(upInvest);
 
     // 바이낸스 테이블
     document.getElementById('bnTable').innerHTML = binance.positions.map(p => {
@@ -636,18 +668,44 @@ async function refresh() {
       </div>`).join('') || '<div class="bot" style="border-left-color:var(--red)">가동 봇 없음</div>';
   } catch (e) {
     console.error('refresh error:', e);
-    // 화면 상단에 에러 표시 (모바일 디버깅용)
     const ts = document.getElementById('updateTs');
     ts.innerHTML = `❌ <span style="color:#ff5252">${e.message}</span><br><span style="font-size:10px;opacity:0.7">${API_BASE}</span>`;
-    // PnL 카드 셋에 에러 표시
     const pnlEl = document.getElementById('totalPnl');
     if (pnlEl) { pnlEl.textContent = 'ERROR'; pnlEl.className = 'card-value red'; }
   }
 }
 
+// 주식 시세 새로고침 (1분 캐시)
+async function refreshStocks() {
+  try {
+    const res = await fetch(API_BASE + '/api/stocks', fetchOpts());
+    const r = await res.json();
+    if (!r.ok && !r.stocks) throw new Error('주식 응답 없음');
+    const html = (r.stocks || []).map(s => {
+      const isUSD = s.currency === 'USD';
+      const priceStr = isUSD ? '$' + s.price.toFixed(2) : '₩' + Math.round(s.price).toLocaleString();
+      const prevStr = isUSD ? '$' + s.prev.toFixed(2) : '₩' + Math.round(s.prev).toLocaleString();
+      const cls = s.changePct >= 0 ? 'long' : 'short';
+      const arrow = s.changePct >= 0 ? '▲' : '▼';
+      return `<div class="card">
+        <div class="card-label">${s.flag} ${s.name}</div>
+        <div class="card-value ${cls}" style="font-size:22px">${priceStr}</div>
+        <div class="timestamp ${cls}">${arrow} ${s.changePct.toFixed(2)}% (전일 ${prevStr})</div>
+        <div class="timestamp" style="opacity:0.6;font-size:10px">${s.rank}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('stockList').innerHTML = html || '<div class="card">데이터 없음</div>';
+  } catch (e) {
+    console.error('stocks error:', e);
+    document.getElementById('stockList').innerHTML = `<div class="card" style="color:#ff5252">주식 로드 실패: ${e.message}</div>`;
+  }
+}
+
 document.getElementById('refreshBtn').onclick = refresh;
 refresh();
+refreshStocks();
 setInterval(refresh, 5000);
+setInterval(refreshStocks, 60_000);  // 주식 1분
 
 // 음성 인식
 const voiceBtn = document.getElementById('voiceBtn');
