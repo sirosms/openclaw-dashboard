@@ -396,11 +396,23 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <!-- 통합 자산 요약 (모바일에서 PnL/수익률 우선 노출) -->
 <div class="summary">
-  <!-- 1. 미실현 PnL (모바일 1번째) -->
+  <!-- 1. 미실현 PnL (통합 + 거래소별 분리) -->
   <div class="card pnl-priority">
-    <div class="card-label">💹 미실현 PnL</div>
+    <div class="card-label">💹 미실현 PnL (통합)</div>
     <div class="card-value" id="totalPnl">-</div>
     <div class="timestamp" id="updateTs">-</div>
+  </div>
+  <!-- 1-1. 바이낸스 미실현 PnL -->
+  <div class="card">
+    <div class="card-label">🟡 바이낸스 PnL</div>
+    <div class="card-value" id="bnPnl" style="font-size:22px">-</div>
+    <div class="timestamp" id="bnPnlKRW">-</div>
+  </div>
+  <!-- 1-2. 업비트 미실현 PnL -->
+  <div class="card">
+    <div class="card-label">🔵 업비트 PnL</div>
+    <div class="card-value" id="upPnl" style="font-size:22px">-</div>
+    <div class="timestamp" id="upPnlUSD">-</div>
   </div>
   <!-- 2. 수익률 (모바일 2번째) -->
   <div class="card return-priority" style="cursor:pointer" onclick="setInvest()">
@@ -545,6 +557,21 @@ async function refresh() {
     totalPnl.textContent = fmt.usd(summary.netPnlUSD);
     totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
     document.getElementById('updateTs').textContent = '⏱ ' + new Date().toLocaleTimeString('ko-KR');
+
+    // 바이낸스 / 업비트 분리 PnL
+    const bnPnlEl = document.getElementById('bnPnl');
+    const bnPnlVal = summary.bnPnl || 0;
+    const usdkrw = (data.exchange && data.exchange.USD_KRW) || 1400;
+    bnPnlEl.textContent = fmt.usd(bnPnlVal);
+    bnPnlEl.className = 'card-value ' + cls(bnPnlVal);
+    document.getElementById('bnPnlKRW').textContent = fmt.krw(bnPnlVal * usdkrw);
+
+    const upPnlEl = document.getElementById('upPnl');
+    const upPnlKRW = summary.upPnlKRW || 0;
+    const upPnlUSD = summary.upPnlUSD || 0;
+    upPnlEl.textContent = fmt.krw(upPnlKRW);
+    upPnlEl.className = 'card-value ' + cls(upPnlKRW);
+    document.getElementById('upPnlUSD').textContent = fmt.usd(upPnlUSD);
 
     // 바이낸스 테이블
     document.getElementById('bnTable').innerHTML = binance.positions.map(p => {
