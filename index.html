@@ -595,24 +595,26 @@ async function refresh() {
     const upPctVal = upInvest > 0 ? (summary.upPnlKRW / upInvest) * 100 : 0;
     const totalPctVal = totalCapitalUSD > 0 ? (summary.netPnlUSD / totalCapitalUSD) * 100 : 0;
 
+    // 통합 PnL — 원화를 메인으로
     const totalPnl = document.getElementById('totalPnl');
-    totalPnl.textContent = fmt.usd(summary.netPnlUSD) + ' (' + fmt.pct(totalPctVal) + ')';
-    totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
-    // 통합 PnL 원화 환산 표시
     const totalPnlKRW = summary.netPnlUSD * usdkrwReal;
+    totalPnl.textContent = (totalPnlKRW >= 0 ? '+' : '') + fmt.krw(totalPnlKRW) + ' (' + fmt.pct(totalPctVal) + ')';
+    totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
     const krwEl = document.getElementById('totalPnlKRW');
-    krwEl.textContent = (totalPnlKRW >= 0 ? '+' : '') + fmt.krw(totalPnlKRW);
+    krwEl.textContent = fmt.usd(summary.netPnlUSD);
     krwEl.style.color = totalPnlKRW >= 0 ? 'var(--green)' : 'var(--red)';
     document.getElementById('updateTs').textContent = '⏱ ' + new Date().toLocaleTimeString('ko-KR');
 
-    // 바이낸스 / 업비트 분리 PnL + %
+    // 바이낸스 PnL — 원화를 메인으로
     const bnPnlEl = document.getElementById('bnPnl');
     const bnPnlVal = summary.bnPnl || 0;
     const usdkrw = usdkrwReal;
-    bnPnlEl.textContent = fmt.usd(bnPnlVal) + ' (' + fmt.pct(bnPctVal) + ')';
+    const bnPnlKRW = bnPnlVal * usdkrw;
+    bnPnlEl.textContent = (bnPnlKRW >= 0 ? '+' : '') + fmt.krw(bnPnlKRW) + ' (' + fmt.pct(bnPctVal) + ')';
     bnPnlEl.className = 'card-value ' + cls(bnPnlVal);
-    document.getElementById('bnPnlKRW').textContent = fmt.krw(bnPnlVal * usdkrw) + ' · 마진 $' + bnMargin.toFixed(0);
+    document.getElementById('bnPnlKRW').textContent = fmt.usd(bnPnlVal) + ' · 마진 $' + bnMargin.toFixed(0);
 
+    // 업비트 PnL — 원화 메인 유지
     const upPnlEl = document.getElementById('upPnl');
     const upPnlKRW = summary.upPnlKRW || 0;
     const upPnlUSD = summary.upPnlUSD || 0;
