@@ -790,18 +790,27 @@ async function refresh() {
         T2 $${fixDigits(g.tp2)} <span style="opacity:0.6">(+${g.tp2Pct}%)</span><br>
         T3 $${fixDigits(g.tp3)} <span style="opacity:0.6">(+${g.tp3Pct}%)</span>
       </span>` : '-';
-      // 청산까지 거리 + 색상 + 깜빡임 (거리가 가까울수록 위험)
+      // 청산까지 거리 + 실질 Margin Ratio + 색상 + 깜빡임
       const dist = Math.abs(p.liqDistancePct || 0);
+      const realMR = p.realMarginRatio || 0;
+      // 위험도 = 청산거리 우선, 실제 MR 보조 판단
       let mrCls = 'long', mrAttr = '';
-      if (dist > 0 && dist < 5)       { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkCritical 0.3s ease-in-out infinite;font-weight:bold"'; }
-      else if (dist > 0 && dist < 10) { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkDanger 0.5s ease-in-out infinite;font-weight:bold"'; }
-      else if (dist > 0 && dist < 20) { mrCls = 'gold'; mrAttr = 'style="animation:mrBlink 0.8s ease-in-out infinite"'; }
-      // 청산가 없거나 매우 멀면 안전
+      const danger = (dist > 0 && dist < 5) || realMR >= 80;
+      const warn = (dist > 0 && dist < 10) || realMR >= 50;
+      const caution = (dist > 0 && dist < 20) || realMR >= 30;
+      if (danger)       { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkCritical 0.3s ease-in-out infinite;font-weight:bold"'; }
+      else if (warn)    { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkDanger 0.5s ease-in-out infinite;font-weight:bold"'; }
+      else if (caution) { mrCls = 'gold'; mrAttr = 'style="animation:mrBlink 0.8s ease-in-out infinite"'; }
       const distStr = (dist === 0 || dist > 99) ? '안전' : `-${dist.toFixed(1)}%`;
+      const mrStr = realMR > 0 ? `MR ${realMR.toFixed(2)}%` : '';
       const liqPriceStr = p.liquidation && p.liquidation > 0
-        ? `$${p.liquidation.toFixed(p.liquidation<1?6:3)}`
-        : '-';
-      const mrCell = `<span class="mono ${mrCls}" ${mrAttr}>${distStr}<br><span style="font-size:10px;opacity:0.7">청산 ${liqPriceStr}</span></span>`;
+        ? `청산 $${p.liquidation.toFixed(p.liquidation<1?6:3)}`
+        : '';
+      const mrCell = `<span class="mono ${mrCls}" ${mrAttr}>
+        ${distStr}
+        ${mrStr ? `<br><span style="font-size:10px;opacity:0.85;font-weight:600">${mrStr}</span>` : ''}
+        ${liqPriceStr ? `<br><span style="font-size:10px;opacity:0.6">${liqPriceStr}</span>` : ''}
+      </span>`;
       const modeBadge = p.marginType === 'ISOLATED'
         ? '<span style="background:rgba(255,193,7,0.25);color:#ffc107;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">ISO</span>'
         : '<span style="background:rgba(46,204,113,0.25);color:var(--green);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">CROSS</span>';
