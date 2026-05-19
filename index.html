@@ -516,9 +516,9 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
       <thead><tr>
         <th>심볼</th><th>방향</th><th>레버</th><th>진입가</th><th>현재가</th>
         <th>수량</th><th>명목</th><th>마진</th><th>PnL%</th><th>PnL($)</th>
-        <th>SL ↓</th><th>TP1 / TP2 / TP3</th>
+        <th>MR ⚡</th><th>SL ↓</th><th>TP1 / TP2 / TP3</th>
       </tr></thead>
-      <tbody id="bnTable"><tr><td colspan="12" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
+      <tbody id="bnTable"><tr><td colspan="13" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -747,6 +747,14 @@ async function refresh() {
         T2 $${fixDigits(g.tp2)} <span style="opacity:0.6">(+${g.tp2Pct}%)</span><br>
         T3 $${fixDigits(g.tp3)} <span style="opacity:0.6">(+${g.tp3Pct}%)</span>
       </span>` : '-';
+      // Margin Ratio 컬럼 — 청산 거리 + 색상 + 깜빡임
+      const mr = p.positionMarginRatio || 0;
+      const dist = p.liqDistancePct || 0;
+      let mrCls = 'long', mrAttr = '';
+      if (mr >= 80) { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkCritical 0.3s ease-in-out infinite;font-weight:bold"'; }
+      else if (mr >= 50) { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkDanger 0.5s ease-in-out infinite;font-weight:bold"'; }
+      else if (mr >= 30) { mrCls = 'gold'; mrAttr = 'style="animation:mrBlink 0.8s ease-in-out infinite"'; }
+      const mrCell = `<span class="mono ${mrCls}" ${mrAttr}>${mr.toFixed(1)}%<br><span style="font-size:10px;opacity:0.7">청산 -${Math.abs(dist).toFixed(1)}%</span></span>`;
       return `
       <tr>
         <td><span class="symbol-tag">${p.symbol.replace('USDT','')}</span></td>
@@ -759,10 +767,11 @@ async function refresh() {
         <td class="mono gold">$${p.margin.toFixed(2)}</td>
         <td class="mono ${cls(p.pnlPct)}">${fmt.pct(p.pnlPct)}</td>
         <td class="mono ${cls(p.pnl)}">${fmt.usd(p.pnl)}</td>
+        <td>${mrCell}</td>
         <td>${slCell}</td>
         <td>${tpCell}</td>
       </tr>`;
-    }).join('') || `<tr><td colspan="12" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
+    }).join('') || `<tr><td colspan="13" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
 
     // 업비트 테이블
     document.getElementById('upTable').innerHTML = upbit.holdings.map(h => `
