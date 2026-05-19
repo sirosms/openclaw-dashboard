@@ -562,7 +562,7 @@ async function refresh() {
     // 바이낸스 / 업비트 분리 PnL
     const bnPnlEl = document.getElementById('bnPnl');
     const bnPnlVal = summary.bnPnl || 0;
-    const usdkrw = (data.exchange && data.exchange.USD_KRW) || 1400;
+    const usdkrw = (r.exchange && r.exchange.USD_KRW) || 1476;
     bnPnlEl.textContent = fmt.usd(bnPnlVal);
     bnPnlEl.className = 'card-value ' + cls(bnPnlVal);
     document.getElementById('bnPnlKRW').textContent = fmt.krw(bnPnlVal * usdkrw);
