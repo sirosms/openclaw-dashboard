@@ -117,6 +117,35 @@ header h1 {
   50% { box-shadow: 0 0 0 14px rgba(255, 69, 0, 0); }
 }
 
+/* ━━━ Margin Ratio 위험 경고 깜빡임 ━━━ */
+.mr-warn {
+  animation: mrBlink 0.8s ease-in-out infinite;
+  border-color: #ffc107 !important;
+  background: linear-gradient(135deg, rgba(255,193,7,0.15), rgba(255,193,7,0.05)) !important;
+}
+.mr-danger {
+  animation: mrBlinkDanger 0.5s ease-in-out infinite;
+  border-color: #ff1744 !important;
+  background: linear-gradient(135deg, rgba(255,23,68,0.2), rgba(255,23,68,0.05)) !important;
+}
+.mr-critical {
+  animation: mrBlinkCritical 0.3s ease-in-out infinite;
+  border-color: #ff1744 !important;
+  background: linear-gradient(135deg, rgba(255,23,68,0.35), rgba(255,23,68,0.1)) !important;
+}
+@keyframes mrBlink {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,193,7,0.6); }
+  50% { box-shadow: 0 0 0 10px rgba(255,193,7,0); }
+}
+@keyframes mrBlinkDanger {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,23,68,0.8); transform: scale(1); }
+  50% { box-shadow: 0 0 0 14px rgba(255,23,68,0); transform: scale(1.02); }
+}
+@keyframes mrBlinkCritical {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,23,68,1), inset 0 0 20px rgba(255,23,68,0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 0 20px rgba(255,23,68,0), inset 0 0 30px rgba(255,23,68,0.7); transform: scale(1.04); }
+}
+
 /* ━━━ Summary Cards (Glass Effect) ━━━ */
 .summary {
   display: grid;
@@ -290,6 +319,17 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     background: linear-gradient(135deg, rgba(255, 122, 61, 0.12), rgba(255, 201, 119, 0.06)) !important;
   }
   .pnl-priority .card-value, .return-priority .card-value { font-size: 26px !important; }
+
+  /* ━━━ 모바일 전용: 바이낸스 앱 스타일 — PnL/ROI 최상단 정렬 ━━━ */
+  .summary { display: flex !important; flex-direction: column !important; gap: 8px; }
+  .pnl-priority   { order: 1 !important; }   /* 💹 미실현 PnL (통합) */
+  #mrCard         { order: 2 !important; }   /* ⚡ Margin Ratio (위험 알림) */
+  .return-priority{ order: 3 !important; }   /* 📈 수익률 (ROI) */
+  .card.hero      { order: 4 !important; }   /* 💰 총 자산 */
+  /* 거래소별 PnL은 그 다음 */
+  .summary .card:not(.pnl-priority):not(.return-priority):not(.hero):not(#mrCard) {
+    order: 10;
+  }
 }
 </style>
 </head>
@@ -460,6 +500,12 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="miniSkh" style="font-size:20px">-</div>
     <div class="timestamp" id="miniSkhChg">-</div>
   </div>
+  <!-- 바이낸스 Margin Ratio (위험 시 깜빡임) -->
+  <div class="card" id="mrCard">
+    <div class="card-label">⚡ 바이낸스 Margin Ratio</div>
+    <div class="card-value" id="mrValue" style="font-size:22px">-</div>
+    <div class="timestamp" id="mrSub">-</div>
+  </div>
 </div>
 
 <!-- 바이낸스 -->
@@ -606,6 +652,33 @@ async function refresh() {
     // 업비트
     document.getElementById('upTotal').textContent = fmt.krw(upbit.totalKRW || 0);
     document.getElementById('upSplit').textContent = `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}`;
+
+    // ⚡ Margin Ratio (위험 시 깜빡임)
+    const mr = binance.marginRatio || 0;
+    const mrCard = document.getElementById('mrCard');
+    const mrValue = document.getElementById('mrValue');
+    const mrSub = document.getElementById('mrSub');
+    if (mrValue) {
+      mrValue.textContent = mr.toFixed(2) + '%';
+      // 임계값별 색상 + 깜빡임
+      mrCard.classList.remove('mr-warn','mr-danger','mr-critical');
+      if (mr >= 80) {
+        mrValue.className = 'card-value red';
+        mrCard.classList.add('mr-critical');
+      } else if (mr >= 50) {
+        mrValue.className = 'card-value red';
+        mrCard.classList.add('mr-danger');
+      } else if (mr >= 30) {
+        mrValue.className = 'card-value gold';
+        mrCard.classList.add('mr-warn');
+      } else {
+        mrValue.className = 'card-value long';
+      }
+      const mm = binance.maintMargin || 0;
+      const mb = binance.marginBalance || 0;
+      mrSub.textContent = `유지 $${mm.toFixed(2)} / 잔고 $${mb.toFixed(2)}`;
+      mrSub.style.color = mr >= 50 ? 'var(--red)' : (mr >= 30 ? '#ffc107' : 'inherit');
+    }
 
     // 미실현 PnL 합산 표시 (각 카드 보조 라인)
     const _usdkrw = (r.exchange && r.exchange.USD_KRW) || 1476;
