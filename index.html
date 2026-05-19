@@ -488,11 +488,23 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <script>
 // MSA — Frontend (GitHub Pages) ↔ Backend API
+const DEFAULT_API = 'https://frighten-spoken-duke.ngrok-free.dev';
 const params = new URLSearchParams(location.search);
 const apiFromQuery = params.get('api');
 if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
-const API_BASE = localStorage.getItem('OPENCLAW_API') || 'https://frighten-spoken-duke.ngrok-free.dev';
-console.log('API_BASE:', API_BASE);
+
+// 옛날 localStorage 값 자동 무효화 (localhost/lt/cloudflare/127 등)
+let stored = localStorage.getItem('OPENCLAW_API');
+if (stored && /(localhost|127\.0|loca\.lt|trycloudflare|lhr\.life)/i.test(stored)) {
+  console.warn('[API_BASE] 옛 도메인 감지, 기본값으로 리셋:', stored);
+  localStorage.removeItem('OPENCLAW_API');
+  stored = null;
+}
+const API_BASE = stored || DEFAULT_API;
+console.log('[API_BASE]:', API_BASE);
+
+// 화면에 API 정보 표시 (디버깅용 — 새로고침 시각 옆)
+window.__API_BASE = API_BASE;
 
 const fmt = {
   usd: (n) => '$' + (n||0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}),
@@ -514,8 +526,10 @@ const fetchOpts = (extra) => ({
 
 async function refresh() {
   try {
-    const r = await fetch(API_BASE + '/api/status', fetchOpts()).then(r=>r.json());
-    if (!r.ok) throw new Error(r.error);
+    const res = await fetch(API_BASE + '/api/status', fetchOpts());
+    if (!res.ok) throw new Error(`HTTP ${res.status} from ${API_BASE}`);
+    const r = await res.json();
+    if (!r.ok) throw new Error(r.error || 'API ok=false');
     const { binance, upbit, bots, summary } = r;
 
     // 총 자산
@@ -622,7 +636,12 @@ async function refresh() {
       </div>`).join('') || '<div class="bot" style="border-left-color:var(--red)">가동 봇 없음</div>';
   } catch (e) {
     console.error('refresh error:', e);
-    document.getElementById('updateTs').textContent = '❌ ' + e.message;
+    // 화면 상단에 에러 표시 (모바일 디버깅용)
+    const ts = document.getElementById('updateTs');
+    ts.innerHTML = `❌ <span style="color:#ff5252">${e.message}</span><br><span style="font-size:10px;opacity:0.7">${API_BASE}</span>`;
+    // PnL 카드 셋에 에러 표시
+    const pnlEl = document.getElementById('totalPnl');
+    if (pnlEl) { pnlEl.textContent = 'ERROR'; pnlEl.className = 'card-value red'; }
   }
 }
 
