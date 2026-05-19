@@ -580,13 +580,16 @@ async function refresh() {
       // 미실현 PnL 합산 (실현 시 시나리오)
       const _fx = (r.exchange && r.exchange.USD_KRW) || 1476;
       const unrealizedKRW = (summary.bnPnl || 0) * _fx + (summary.upPnlKRW || 0);
-      // 실현 시 = 평가금 그대로 (이미 미실현 PnL 포함된 값)
-      const realizedScenarioPct = rPct;  // 동일 (수익실현하면 현재 평가금이 그대로 잔고가 됨)
+      const unrealizedPct = (unrealizedKRW / investKRW) * 100;
+      // 실현 전(미실현 제외) 수익률 시나리오
+      const beforeRealizePct = ((profit - unrealizedKRW) / investKRW) * 100;
       returnPctEl.textContent = fmt.pct(rPct);
       returnPctEl.className = 'card-value ' + cls(rPct);
       profitKRWEl.innerHTML = (profit>=0?'+':'') + fmt.krw(profit) +
-        '<br><span style="opacity:0.7;font-size:11px;color:' + (unrealizedKRW>=0?'var(--green)':'var(--red)') + '">' +
-        '💹 미실현 PnL 실현시 ' + (unrealizedKRW>=0?'+':'') + fmt.krw(unrealizedKRW) + ' 포함</span>' +
+        '<br><span style="opacity:0.85;font-size:11px;color:' + (unrealizedKRW>=0?'var(--green)':'var(--red)') + '">' +
+        '💹 미실현 실현시 ' + (unrealizedPct>=0?'+':'') + unrealizedPct.toFixed(2) + '% · ' +
+        (unrealizedKRW>=0?'+':'') + fmt.krw(unrealizedKRW) + '</span>' +
+        '<br><span style="opacity:0.55;font-size:10px">미실현 제외 ' + beforeRealizePct.toFixed(2) + '%</span>' +
         (dep > 0
           ? '<br><span style="opacity:0.6;font-size:10px">입금 ₩' + dep.toLocaleString() + ' - 출금 ₩' + wd.toLocaleString() + '</span>'
           : '<br><span style="opacity:0.6;font-size:10px">투자 ' + fmt.krw(investKRW) + '</span>');
