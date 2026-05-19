@@ -577,9 +577,16 @@ async function refresh() {
     if (investKRW > 0) {
       const profit = grandTotal - investKRW;
       const rPct = (profit / investKRW) * 100;
+      // 미실현 PnL 합산 (실현 시 시나리오)
+      const _fx = (r.exchange && r.exchange.USD_KRW) || 1476;
+      const unrealizedKRW = (summary.bnPnl || 0) * _fx + (summary.upPnlKRW || 0);
+      // 실현 시 = 평가금 그대로 (이미 미실현 PnL 포함된 값)
+      const realizedScenarioPct = rPct;  // 동일 (수익실현하면 현재 평가금이 그대로 잔고가 됨)
       returnPctEl.textContent = fmt.pct(rPct);
       returnPctEl.className = 'card-value ' + cls(rPct);
       profitKRWEl.innerHTML = (profit>=0?'+':'') + fmt.krw(profit) +
+        '<br><span style="opacity:0.7;font-size:11px;color:' + (unrealizedKRW>=0?'var(--green)':'var(--red)') + '">' +
+        '💹 미실현 PnL 실현시 ' + (unrealizedKRW>=0?'+':'') + fmt.krw(unrealizedKRW) + ' 포함</span>' +
         (dep > 0
           ? '<br><span style="opacity:0.6;font-size:10px">입금 ₩' + dep.toLocaleString() + ' - 출금 ₩' + wd.toLocaleString() + '</span>'
           : '<br><span style="opacity:0.6;font-size:10px">투자 ' + fmt.krw(investKRW) + '</span>');
