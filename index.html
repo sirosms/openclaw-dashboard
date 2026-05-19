@@ -445,6 +445,18 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="fxRate" style="font-size:22px">-</div>
     <div class="timestamp" id="fxTs">실시간</div>
   </div>
+  <!-- 상단 미니 주식: NVIDIA -->
+  <div class="card">
+    <div class="card-label">🇺🇸 NVIDIA</div>
+    <div class="card-value" id="miniNvda" style="font-size:20px">-</div>
+    <div class="timestamp" id="miniNvdaChg">-</div>
+  </div>
+  <!-- 상단 미니 주식: SK하이닉스 -->
+  <div class="card">
+    <div class="card-label">🇰🇷 SK하이닉스</div>
+    <div class="card-value" id="miniSkh" style="font-size:20px">-</div>
+    <div class="timestamp" id="miniSkhChg">-</div>
+  </div>
 </div>
 
 <!-- 바이낸스 -->
@@ -677,22 +689,55 @@ async function refresh() {
   }
 }
 
+// 주식/지수 가격 포맷터
+function fmtStockPrice(s) {
+  if (s.currency === 'USD') return '$' + s.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  // KRW (주식 / 코스피)
+  if (s.kind === 'index') return s.price.toFixed(2);  // 지수는 소수점
+  return '₩' + Math.round(s.price).toLocaleString();
+}
+function fmtStockPrev(s) {
+  if (s.currency === 'USD') return '$' + s.prev.toFixed(2);
+  if (s.kind === 'index') return s.prev.toFixed(2);
+  return '₩' + Math.round(s.prev).toLocaleString();
+}
+
 // 주식 시세 새로고침 (1분 캐시)
 async function refreshStocks() {
   try {
     const res = await fetch(API_BASE + '/api/stocks', fetchOpts());
     const r = await res.json();
     if (!r.ok && !r.stocks) throw new Error('주식 응답 없음');
-    const html = (r.stocks || []).map(s => {
-      const isUSD = s.currency === 'USD';
-      const priceStr = isUSD ? '$' + s.price.toFixed(2) : '₩' + Math.round(s.price).toLocaleString();
-      const prevStr = isUSD ? '$' + s.prev.toFixed(2) : '₩' + Math.round(s.prev).toLocaleString();
+    const stocks = r.stocks || [];
+
+    // 1) 상단 미니 카드 (NVIDIA + SK하이닉스만)
+    const nvda = stocks.find(s => s.symbol === 'NVDA');
+    const skh = stocks.find(s => s.symbol === '000660.KS');
+    if (nvda) {
+      const cls = nvda.changePct >= 0 ? 'long' : 'short';
+      const arrow = nvda.changePct >= 0 ? '▲' : '▼';
+      const el = document.getElementById('miniNvda');
+      if (el) { el.textContent = fmtStockPrice(nvda); el.className = 'card-value ' + cls; }
+      const chgEl = document.getElementById('miniNvdaChg');
+      if (chgEl) { chgEl.textContent = `${arrow} ${nvda.changePct.toFixed(2)}%`; chgEl.className = 'timestamp ' + cls; }
+    }
+    if (skh) {
+      const cls = skh.changePct >= 0 ? 'long' : 'short';
+      const arrow = skh.changePct >= 0 ? '▲' : '▼';
+      const el = document.getElementById('miniSkh');
+      if (el) { el.textContent = fmtStockPrice(skh); el.className = 'card-value ' + cls; }
+      const chgEl = document.getElementById('miniSkhChg');
+      if (chgEl) { chgEl.textContent = `${arrow} ${skh.changePct.toFixed(2)}%`; chgEl.className = 'timestamp ' + cls; }
+    }
+
+    // 2) 주식 시세 섹션 (전체, 나스닥/코스피 포함)
+    const html = stocks.map(s => {
       const cls = s.changePct >= 0 ? 'long' : 'short';
       const arrow = s.changePct >= 0 ? '▲' : '▼';
       return `<div class="card">
         <div class="card-label">${s.flag} ${s.name}</div>
-        <div class="card-value ${cls}" style="font-size:22px">${priceStr}</div>
-        <div class="timestamp ${cls}">${arrow} ${s.changePct.toFixed(2)}% (전일 ${prevStr})</div>
+        <div class="card-value ${cls}" style="font-size:22px">${fmtStockPrice(s)}</div>
+        <div class="timestamp ${cls}">${arrow} ${s.changePct.toFixed(2)}% (전일 ${fmtStockPrev(s)})</div>
         <div class="timestamp" style="opacity:0.6;font-size:10px">${s.rank}</div>
       </div>`;
     }).join('');
