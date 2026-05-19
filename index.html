@@ -146,6 +146,47 @@ header h1 {
   50% { box-shadow: 0 0 0 20px rgba(255,23,68,0), inset 0 0 30px rgba(255,23,68,0.7); transform: scale(1.04); }
 }
 
+/* ━━━ 모든 클릭 효과 (버튼 / 카드) ━━━ */
+button, .card[onclick], .symbol-tag, [data-clickable] {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.18s ease, filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+button:hover, .card[onclick]:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 18px rgba(255, 122, 61, 0.35);
+}
+button:active, .card[onclick]:active {
+  transform: scale(0.96);
+  filter: brightness(0.92);
+}
+/* Ripple 효과 */
+.ripple-fx {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 201, 119, 0.65) 0%, rgba(255, 122, 61, 0.25) 50%, transparent 100%);
+  transform: translate(-50%, -50%) scale(0);
+  animation: rippleExpand 0.6s ease-out forwards;
+}
+@keyframes rippleExpand {
+  to {
+    transform: translate(-50%, -50%) scale(20);
+    opacity: 0;
+  }
+}
+/* 마이크 버튼 활성화 시 펄스 */
+#voiceBtn.active {
+  animation: voicePulse 1s ease-in-out infinite;
+  background: linear-gradient(135deg, #ff1744, #ff5252) !important;
+  box-shadow: 0 0 30px rgba(255, 23, 68, 0.7) !important;
+}
+@keyframes voicePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 23, 68, 0.7); }
+  50% { transform: scale(1.08); box-shadow: 0 0 40px rgba(255, 23, 68, 1); }
+}
+
 /* ━━━ Summary Cards (Glass Effect) ━━━ */
 .summary {
   display: grid;
@@ -322,12 +363,14 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
   /* ━━━ 모바일 전용: 바이낸스 앱 스타일 — PnL/ROI 최상단 정렬 ━━━ */
   .summary { display: flex !important; flex-direction: column !important; gap: 8px; }
-  .pnl-priority   { order: 1 !important; }   /* 💹 미실현 PnL (통합) */
-  #mrCard         { order: 2 !important; }   /* ⚡ Margin Ratio (위험 알림) */
-  .return-priority{ order: 3 !important; }   /* 📈 수익률 (ROI) */
-  .card.hero      { order: 4 !important; }   /* 💰 총 자산 */
-  /* 거래소별 PnL은 그 다음 */
-  .summary .card:not(.pnl-priority):not(.return-priority):not(.hero):not(#mrCard) {
+  .pnl-priority    { order: 1 !important; }   /* 💹 미실현 PnL (통합) */
+  #bnPnlCard       { order: 2 !important; }   /* 🟡 바이낸스 PnL */
+  #upPnlCard       { order: 3 !important; }   /* 🔵 업비트 PnL */
+  .card.hero       { order: 4 !important; }   /* 💰 총 자산 — 업비트 PnL 다음 */
+  #mrCard          { order: 5 !important; }   /* ⚡ Margin Ratio (위험 알림) */
+  .return-priority { order: 6 !important; }   /* 📈 수익률 (ROI) */
+  /* 나머지 (바이낸스 잔고, 업비트 잔고, 환율, 주식 미니카드 등) */
+  .summary .card:not(.pnl-priority):not(.return-priority):not(.hero):not(#mrCard):not(#bnPnlCard):not(#upPnlCard) {
     order: 10;
   }
 }
@@ -444,13 +487,13 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="timestamp" id="updateTs">-</div>
   </div>
   <!-- 1-1. 바이낸스 미실현 PnL -->
-  <div class="card">
+  <div class="card" id="bnPnlCard">
     <div class="card-label">🟡 바이낸스 PnL</div>
     <div class="card-value" id="bnPnl" style="font-size:22px">-</div>
     <div class="timestamp" id="bnPnlKRW">-</div>
   </div>
   <!-- 1-2. 업비트 미실현 PnL -->
-  <div class="card">
+  <div class="card" id="upPnlCard">
     <div class="card-label">🔵 업비트 PnL</div>
     <div class="card-value" id="upPnl" style="font-size:22px">-</div>
     <div class="timestamp" id="upPnlUSD">-</div>
@@ -865,6 +908,33 @@ refresh();
 refreshStocks();
 setInterval(refresh, 5000);
 setInterval(refreshStocks, 60_000);  // 주식 1분
+
+// ━━━ 클릭 효과 (Ripple) — 모든 버튼/카드/심볼태그에 자동 적용 ━━━
+function attachRipple(el) {
+  el.addEventListener('click', (ev) => {
+    const rect = el.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    const y = ev.clientY - rect.top;
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple-fx';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    ripple.style.width = ripple.style.height = '20px';
+    el.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 650);
+    // 햅틱 피드백 (모바일)
+    if (navigator.vibrate) navigator.vibrate(15);
+  });
+}
+document.querySelectorAll('button, .card[onclick], .symbol-tag').forEach(attachRipple);
+// 동적으로 추가되는 요소도 감지 (MutationObserver)
+new MutationObserver((muts) => {
+  muts.forEach(m => m.addedNodes.forEach(n => {
+    if (n.nodeType !== 1) return;
+    if (n.matches && n.matches('button, .card[onclick], .symbol-tag')) attachRipple(n);
+    if (n.querySelectorAll) n.querySelectorAll('button, .card[onclick], .symbol-tag').forEach(attachRipple);
+  }));
+}).observe(document.body, { childList: true, subtree: true });
 
 // 음성 인식
 const voiceBtn = document.getElementById('voiceBtn');
