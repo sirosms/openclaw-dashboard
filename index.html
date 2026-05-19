@@ -656,15 +656,13 @@ async function refresh() {
     bnPnlEl.className = 'card-value ' + cls(bnPnlVal);
     document.getElementById('bnPnlKRW').textContent = fmt.usd(bnPnlVal) + ' · 마진 $' + bnMargin.toFixed(0);
 
-    // 업비트 PnL — 원화 메인, % 는 보조 라인으로
+    // 업비트 PnL — 바이낸스 PnL과 동일 포맷 (메인: 원화+%, 보조: USD+투자)
     const upPnlEl = document.getElementById('upPnl');
     const upPnlKRW = summary.upPnlKRW || 0;
     const upPnlUSD = summary.upPnlUSD || 0;
-    upPnlEl.textContent = (upPnlKRW >= 0 ? '+' : '') + fmt.krw(upPnlKRW);
+    upPnlEl.textContent = (upPnlKRW >= 0 ? '+' : '') + fmt.krw(upPnlKRW) + ' (' + fmt.pct(upPctVal) + ')';
     upPnlEl.className = 'card-value ' + cls(upPnlKRW);
-    document.getElementById('upPnlUSD').innerHTML =
-      '<span style="color:' + (upPctVal>=0?'var(--green)':'var(--red)') + '">' + fmt.pct(upPctVal) + '</span>' +
-      ' · ' + fmt.usd(upPnlUSD) + ' · 투자 ' + fmt.krw(upInvest);
+    document.getElementById('upPnlUSD').textContent = fmt.usd(upPnlUSD) + ' · 투자 ' + fmt.krw(upInvest);
 
     // 바이낸스 테이블
     document.getElementById('bnTable').innerHTML = binance.positions.map(p => {
