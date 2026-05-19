@@ -557,11 +557,11 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th>심볼</th><th>방향</th><th>레버</th><th>진입가</th><th>현재가</th>
+        <th>심볼</th><th>방향</th><th>모드</th><th>레버</th><th>진입가</th><th>현재가</th>
         <th>수량</th><th>명목</th><th>마진</th><th>PnL%</th><th>PnL($)</th>
-        <th>MR ⚡</th><th>SL ↓</th><th>TP1 / TP2 / TP3</th>
+        <th>청산거리</th><th>SL ↓</th><th>TP1 / TP2 / TP3</th>
       </tr></thead>
-      <tbody id="bnTable"><tr><td colspan="13" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
+      <tbody id="bnTable"><tr><td colspan="14" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -790,18 +790,26 @@ async function refresh() {
         T2 $${fixDigits(g.tp2)} <span style="opacity:0.6">(+${g.tp2Pct}%)</span><br>
         T3 $${fixDigits(g.tp3)} <span style="opacity:0.6">(+${g.tp3Pct}%)</span>
       </span>` : '-';
-      // Margin Ratio 컬럼 — 청산 거리 + 색상 + 깜빡임
-      const mr = p.positionMarginRatio || 0;
-      const dist = p.liqDistancePct || 0;
+      // 청산까지 거리 + 색상 + 깜빡임 (거리가 가까울수록 위험)
+      const dist = Math.abs(p.liqDistancePct || 0);
       let mrCls = 'long', mrAttr = '';
-      if (mr >= 80) { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkCritical 0.3s ease-in-out infinite;font-weight:bold"'; }
-      else if (mr >= 50) { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkDanger 0.5s ease-in-out infinite;font-weight:bold"'; }
-      else if (mr >= 30) { mrCls = 'gold'; mrAttr = 'style="animation:mrBlink 0.8s ease-in-out infinite"'; }
-      const mrCell = `<span class="mono ${mrCls}" ${mrAttr}>${mr.toFixed(1)}%<br><span style="font-size:10px;opacity:0.7">청산 -${Math.abs(dist).toFixed(1)}%</span></span>`;
+      if (dist > 0 && dist < 5)       { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkCritical 0.3s ease-in-out infinite;font-weight:bold"'; }
+      else if (dist > 0 && dist < 10) { mrCls = 'red'; mrAttr = 'style="animation:mrBlinkDanger 0.5s ease-in-out infinite;font-weight:bold"'; }
+      else if (dist > 0 && dist < 20) { mrCls = 'gold'; mrAttr = 'style="animation:mrBlink 0.8s ease-in-out infinite"'; }
+      // 청산가 없거나 매우 멀면 안전
+      const distStr = (dist === 0 || dist > 99) ? '안전' : `-${dist.toFixed(1)}%`;
+      const liqPriceStr = p.liquidation && p.liquidation > 0
+        ? `$${p.liquidation.toFixed(p.liquidation<1?6:3)}`
+        : '-';
+      const mrCell = `<span class="mono ${mrCls}" ${mrAttr}>${distStr}<br><span style="font-size:10px;opacity:0.7">청산 ${liqPriceStr}</span></span>`;
+      const modeBadge = p.marginType === 'ISOLATED'
+        ? '<span style="background:rgba(255,193,7,0.25);color:#ffc107;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">ISO</span>'
+        : '<span style="background:rgba(46,204,113,0.25);color:var(--green);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">CROSS</span>';
       return `
       <tr>
         <td><span class="symbol-tag">${p.symbol.replace('USDT','')}</span></td>
         <td class="${p.side==='LONG'?'long':'short'}">${p.side}</td>
+        <td>${modeBadge}</td>
         <td class="mono">${p.leverage}x</td>
         <td class="mono">$${fixDigits(p.entry)}</td>
         <td class="mono">$${fixDigits(p.mark)}</td>
@@ -814,7 +822,7 @@ async function refresh() {
         <td>${slCell}</td>
         <td>${tpCell}</td>
       </tr>`;
-    }).join('') || `<tr><td colspan="13" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
+    }).join('') || `<tr><td colspan="14" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
 
     // 업비트 테이블
     document.getElementById('upTable').innerHTML = upbit.holdings.map(h => `
