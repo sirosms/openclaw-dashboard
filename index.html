@@ -491,7 +491,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 const params = new URLSearchParams(location.search);
 const apiFromQuery = params.get('api');
 if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
-const API_BASE = localStorage.getItem('OPENCLAW_API') || 'http://localhost:3000';
+const API_BASE = localStorage.getItem('OPENCLAW_API') || 'https://frighten-spoken-duke.ngrok-free.dev';
 console.log('API_BASE:', API_BASE);
 
 const fmt = {
@@ -502,9 +502,10 @@ const fmt = {
 };
 const cls = (n) => n>0 ? 'green' : n<0 ? 'red' : 'gray';
 
-// LocalTunnel 인증 페이지 우회 + Cloudflare 등 헤더
+// ngrok 무료 플랜 경고 페이지 우회 + 기타 터널 호환
 const fetchOpts = (extra) => ({
   headers: {
+    'ngrok-skip-browser-warning': 'true',
     'bypass-tunnel-reminder': 'true',
     'Content-Type': 'application/json',
     ...(extra || {})
