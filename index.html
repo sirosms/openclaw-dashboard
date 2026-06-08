@@ -7,9 +7,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0306">
 <title>JARVIS — Iron Man Trading Assistant</title>
-<link rel="icon" type="image/svg+xml" href="./favicon.svg">
-<link rel="apple-touch-icon" href="./apple-touch-icon.svg">
-<link rel="mask-icon" href="./favicon.svg" color="#ff5252">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=2">
+<link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png?v=2">
+<link rel="icon" type="image/png" sizes="192x192" href="./favicon-192.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -575,8 +576,8 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="timestamp" id="bnTotalPnl" style="font-size:10px">-</div>
   </div>
   <!-- 5. 업비트 -->
-  <div class="card">
-    <div class="card-label">업비트</div>
+  <div class="card" style="cursor:pointer" onclick="setUpbitStaking()">
+    <div class="card-label">업비트 <span style="opacity:0.5">✏️스테이킹</span></div>
     <div class="card-value" id="upTotal">-</div>
     <div class="timestamp" id="upSplit">-</div>
     <div class="timestamp" id="upTotalPnl" style="font-size:10px">-</div>
@@ -707,10 +708,12 @@ async function refresh() {
     if (!r.ok) throw new Error(r.error || 'API ok=false');
     const { binance, upbit, bots, summary } = r;
 
-    // 총 자산
-    const grandTotal = summary.grandTotalKRW || 0;
+    // 총 자산 (업비트 스테이킹 수동입력 합산)
+    const upbitStaking = parseFloat(localStorage.getItem('JARVIS_UPBIT_STAKING') || '0');
+    const _usdKrwFx = r.exchange?.USD_KRW || summary.usdKrw || 1476;
+    const grandTotal = (summary.grandTotalKRW || 0) + upbitStaking;
     document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
-    document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / (r.exchange?.USD_KRW || 1476));
+    document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / _usdKrwFx) + ' USDT';
 
     // 수익률 — localStorage(입금-출금) 우선
     const returnPctEl = document.getElementById('returnPct');
@@ -748,9 +751,11 @@ async function refresh() {
     document.getElementById('bnTotal').textContent = fmt.krw(binance.totalKRW || 0);
     document.getElementById('bnSplit').textContent = `선물 ${fmt.krw(binance.futuresKRW||0)}/현물 ${fmt.krw(binance.spotKRW||0)}`;
 
-    // 업비트
-    document.getElementById('upTotal').textContent = fmt.krw(upbit.totalKRW || 0);
-    document.getElementById('upSplit').textContent = `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}`;
+    // 업비트 (스테이킹 수동입력 합산)
+    document.getElementById('upTotal').textContent = fmt.krw((upbit.totalKRW || 0) + upbitStaking);
+    document.getElementById('upSplit').textContent =
+      `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}` +
+      (upbitStaking > 0 ? `/스테이킹 ${fmt.krw(upbitStaking)}` : '');
 
     // ⚡ Margin Ratio (위험 시 깜빡임)
     const mr = binance.marginRatio || 0;
@@ -1077,6 +1082,17 @@ function setInvest() {
   localStorage.setItem('JARVIS_WITHDRAW', String(wd));
   localStorage.setItem('JARVIS_INVEST_KRW', String(net));
   alert(`✅ 저장 완료\n입금: ₩${dep.toLocaleString()}\n출금: ₩${wd.toLocaleString()}\n순투자: ₩${net.toLocaleString()}`);
+  refresh();
+}
+
+// 업비트 스테이킹 수동 입력 (업비트는 스테이킹 조회 공개 API가 없어 수동 입력) → 총자산 합산
+function setUpbitStaking() {
+  const old = parseFloat(localStorage.getItem('JARVIS_UPBIT_STAKING') || '0');
+  const s = prompt(`업비트 스테이킹 평가금액 (₩)\n현재: ${old.toLocaleString()}`, old.toString());
+  if (s === null) return;
+  const val = parseFloat(s.replace(/,/g, '')) || 0;
+  localStorage.setItem('JARVIS_UPBIT_STAKING', String(val));
+  alert(`✅ 업비트 스테이킹 ₩${val.toLocaleString()} 저장 (총자산에 합산)`);
   refresh();
 }
 
