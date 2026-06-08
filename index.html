@@ -489,6 +489,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   <div class="card">
     <div class="card-label">바이낸스</div>
     <div class="card-value" id="bnTotal">-</div>
+    <div class="timestamp" id="bnUSDT" style="color:var(--gold)">-</div>
     <div class="timestamp" id="bnSplit">-</div>
     <div class="timestamp" id="bnTotalPnl" style="font-size:10px">-</div>
   </div>
@@ -525,6 +526,19 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   </div>
 </div>
 
+<!-- 바이낸스 Earn (스테이킹) — Futures 위 -->
+<div class="section" id="earnSection" style="display:none">
+  <h2>🏦 바이낸스 Earn (스테이킹)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>자산</th><th>구분</th><th>수량</th><th>APY</th><th>USDT</th><th>₩(원화)</th>
+      </tr></thead>
+      <tbody id="earnTable"></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- 바이낸스 -->
 <div class="section">
   <h2>📊 바이낸스 Futures</h2>
@@ -536,19 +550,6 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
         <th>청산거리</th><th>SL ↓</th><th>TP1 / TP2 / TP3</th>
       </tr></thead>
       <tbody id="bnTable"><tr><td colspan="14" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- 바이낸스 Earn (스테이킹) -->
-<div class="section" id="earnSection" style="display:none">
-  <h2>🏦 바이낸스 Earn (스테이킹)</h2>
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>자산</th><th>구분</th><th>수량</th><th>APY</th><th>USDT</th><th>₩(원화)</th>
-      </tr></thead>
-      <tbody id="earnTable"></tbody>
     </table>
   </div>
 </div>
@@ -677,8 +678,11 @@ async function refresh() {
       profitKRWEl.textContent = '입금/출금 입력하기';
     }
 
-    // 바이낸스
+    // 바이낸스 (KRW는 실시간 환율 적용 + USDT 동시 표시)
     document.getElementById('bnTotal').textContent = fmt.krw(binance.totalKRW || 0);
+    document.getElementById('bnUSDT').textContent =
+      `$${(binance.totalUSDT||0).toFixed(2)} USDT (환율 ₩${Math.round(_usdKrwFx).toLocaleString()})` +
+      (binance.earnUSDT > 0 ? ` · Earn $${binance.earnUSDT.toFixed(2)}` : '');
     document.getElementById('bnSplit').textContent =
       `선물 ${fmt.krw(binance.futuresKRW||0)}/현물 ${fmt.krw(binance.spotKRW||0)}` +
       ((binance.earnKRW||0) > 0 ? `/Earn ${fmt.krw(binance.earnKRW)}` : '');
@@ -706,11 +710,11 @@ async function refresh() {
       earnSection.style.display = 'none';
     }
 
-    // 업비트 (스테이킹 수동입력 합산)
+    // 업비트 (스테이킹 수동입력 합산 — 항상 표시, 0이면 입력 안내)
     document.getElementById('upTotal').textContent = fmt.krw((upbit.totalKRW || 0) + upbitStaking);
     document.getElementById('upSplit').textContent =
       `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}` +
-      (upbitStaking > 0 ? `/스테이킹 ${fmt.krw(upbitStaking)}` : '');
+      (upbitStaking > 0 ? `/스테이킹 ${fmt.krw(upbitStaking)}` : ' · 스테이킹 ✏️클릭입력');
 
     // ⚡ Margin Ratio (위험 시 깜빡임)
     const mr = binance.marginRatio || 0;
