@@ -7,10 +7,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0306">
 <title>JARVIS — Iron Man Trading Assistant</title>
-<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=2">
-<link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png?v=2">
-<link rel="icon" type="image/png" sizes="192x192" href="./favicon-192.png?v=2">
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=2">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=3">
+<link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png?v=3">
+<link rel="icon" type="image/png" sizes="192x192" href="./favicon-192.png?v=3">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -77,6 +77,7 @@ header h1 {
   font-family: 'Inter', sans-serif;
 }
 .iron-icon {
+  object-fit: contain; border-radius: 14px;
   width: 64px; height: 64px;
   display: inline-block;
   filter:
@@ -438,91 +439,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <header>
   <h1>
-    <svg class="iron-icon" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="goldHL" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="#fff4c2"/>
-          <stop offset="30%" stop-color="#ffd54f"/>
-          <stop offset="65%" stop-color="#d99500"/>
-          <stop offset="100%" stop-color="#7a4a00"/>
-        </linearGradient>
-        <linearGradient id="goldShine" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stop-color="#ffd54f" stop-opacity="0"/>
-          <stop offset="50%" stop-color="#ffffff" stop-opacity="0.6"/>
-          <stop offset="100%" stop-color="#ffd54f" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="redBase" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="#ff5252"/>
-          <stop offset="50%" stop-color="#c62828"/>
-          <stop offset="100%" stop-color="#5a0e0e"/>
-        </linearGradient>
-        <radialGradient id="eyeGlow" cx="50%" cy="50%" r="60%">
-          <stop offset="0%" stop-color="#ffffff"/>
-          <stop offset="35%" stop-color="#80efff"/>
-          <stop offset="80%" stop-color="#00bcd4"/>
-          <stop offset="100%" stop-color="#006978" stop-opacity="0"/>
-        </radialGradient>
-        <radialGradient id="arcReactor" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#ffffff"/>
-          <stop offset="30%" stop-color="#a0f5ff"/>
-          <stop offset="70%" stop-color="#00bcd4"/>
-          <stop offset="100%" stop-color="#005566"/>
-        </radialGradient>
-        <filter id="glow1">
-          <feGaussianBlur stdDeviation="3" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        <filter id="glow2"><feGaussianBlur stdDeviation="4"/></filter>
-      </defs>
-
-      <!-- Red outer helmet (얼굴만, 어깨 제거) -->
-      <path fill="url(#redBase)" stroke="#2a0000" stroke-width="1.8"
-        d="M30 50 L22 110 Q28 165 100 188 Q172 165 178 110 L170 50 L158 75 L158 150 Q140 172 100 178 Q60 172 42 150 L42 75 Z"/>
-
-      <!-- Gold faceplate (정면 얼굴) -->
-      <path fill="url(#goldHL)" stroke="#3a2400" stroke-width="1.8"
-        d="M50 42 L100 26 L150 42 L155 88 L148 128 L138 150 Q120 165 100 168 Q80 165 62 150 L52 128 L45 88 Z"/>
-
-      <!-- Gold shine highlight -->
-      <path fill="url(#goldShine)" opacity="0.5"
-        d="M55 50 L100 36 L145 50 L142 85 L130 75 L115 55 L100 50 L85 55 L70 75 L58 85 Z"/>
-
-      <!-- Faceplate panel lines -->
-      <path fill="none" stroke="#5e3a00" stroke-width="0.8" opacity="0.6"
-        d="M62 84 Q100 72 138 84 M62 96 Q100 91 138 96 M70 118 Q100 128 130 118"/>
-
-      <!-- Eye slots -->
-      <path fill="#000" stroke="#3d2400" stroke-width="0.8"
-        d="M58 76 Q70 68 92 74 L94 92 Q78 96 60 91 Z"/>
-      <path fill="#000" stroke="#3d2400" stroke-width="0.8"
-        d="M142 76 Q130 68 108 74 L106 92 Q122 96 140 91 Z"/>
-
-      <!-- Eye glow -->
-      <ellipse cx="76" cy="84" rx="14" ry="5" fill="url(#eyeGlow)" filter="url(#glow1)"/>
-      <ellipse cx="124" cy="84" rx="14" ry="5" fill="url(#eyeGlow)" filter="url(#glow1)"/>
-      <ellipse cx="76" cy="84" rx="10" ry="2.2" fill="#fff"/>
-      <ellipse cx="124" cy="84" rx="10" ry="2.2" fill="#fff"/>
-
-      <!-- Eyebrow shadow -->
-      <path fill="#000" opacity="0.3" d="M55 70 L96 64 L94 76 L57 80 Z"/>
-      <path fill="#000" opacity="0.3" d="M145 70 L104 64 L106 76 L143 80 Z"/>
-
-      <!-- Nose ridge -->
-      <path fill="#000" opacity="0.25" d="M96 86 L100 116 L104 86 L102 112 L98 112 Z"/>
-
-      <!-- Mouth grille -->
-      <rect x="74" y="124" width="52" height="2.5" rx="1.2" fill="#0a0a0a"/>
-      <rect x="76" y="130" width="48" height="2.5" rx="1.2" fill="#0a0a0a"/>
-      <rect x="78" y="136" width="44" height="2.5" rx="1.2" fill="#0a0a0a"/>
-      <rect x="82" y="142" width="36" height="2.5" rx="1.2" fill="#0a0a0a"/>
-
-      <!-- Jawline shadow -->
-      <path fill="#000" opacity="0.3" d="M62 150 Q82 165 100 168 Q118 165 138 150 L132 154 Q116 162 100 162 Q84 162 68 154 Z"/>
-
-      <!-- Helmet highlights -->
-      <path fill="#ffffff" opacity="0.25" d="M40 58 L48 53 L46 75 L38 80 Z"/>
-      <path fill="#ffffff" opacity="0.2" d="M155 53 L162 58 L160 80 L152 75 Z"/>
-    </svg>
+    <img class="iron-icon" src="./favicon-192.png?v=3" alt="JARVIS Iron Man" />
     <span style="display:flex;flex-direction:column;line-height:1">
       <span style="background:linear-gradient(135deg,#fff4c2 0%,#ffd54f 50%,#d99500 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:900">JARVIS</span>
       <span style="font-size:10px;letter-spacing:3px;opacity:0.85;font-weight:600;color:#80efff">TRADING ASSISTANT</span>
@@ -619,6 +536,19 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
         <th>청산거리</th><th>SL ↓</th><th>TP1 / TP2 / TP3</th>
       </tr></thead>
       <tbody id="bnTable"><tr><td colspan="14" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 바이낸스 Earn (스테이킹) -->
+<div class="section" id="earnSection" style="display:none">
+  <h2>🏦 바이낸스 Earn (스테이킹)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>자산</th><th>구분</th><th>수량</th><th>APY</th><th>USDT</th><th>₩(원화)</th>
+      </tr></thead>
+      <tbody id="earnTable"></tbody>
     </table>
   </div>
 </div>
@@ -749,7 +679,32 @@ async function refresh() {
 
     // 바이낸스
     document.getElementById('bnTotal').textContent = fmt.krw(binance.totalKRW || 0);
-    document.getElementById('bnSplit').textContent = `선물 ${fmt.krw(binance.futuresKRW||0)}/현물 ${fmt.krw(binance.spotKRW||0)}`;
+    document.getElementById('bnSplit').textContent =
+      `선물 ${fmt.krw(binance.futuresKRW||0)}/현물 ${fmt.krw(binance.spotKRW||0)}` +
+      ((binance.earnKRW||0) > 0 ? `/Earn ${fmt.krw(binance.earnKRW)}` : '');
+
+    // 바이낸스 Earn 보유자산 (USDT + 원화)
+    const earnPos = (binance.earn && binance.earn.positions) || [];
+    const earnSection = document.getElementById('earnSection');
+    if (earnPos.length > 0) {
+      earnSection.style.display = '';
+      document.getElementById('earnTable').innerHTML = earnPos.map(e => `
+        <tr>
+          <td class="mono">${e.asset}</td>
+          <td>${e.type === 'locked' ? '🔒 락업' : '💧 유연'}</td>
+          <td class="mono">${(e.amount||0).toLocaleString(undefined,{maximumFractionDigits:6})}</td>
+          <td class="mono">${e.apy ? (e.apy*100).toFixed(2)+'%' : '-'}</td>
+          <td class="mono">$${(e.usdtValue||0).toFixed(2)}</td>
+          <td class="mono">${fmt.krw((e.usdtValue||0)*_usdKrwFx)}</td>
+        </tr>`).join('') +
+        `<tr style="font-weight:700;border-top:1px solid var(--border)">
+          <td colspan="4">합계</td>
+          <td class="mono">$${(binance.earnUSDT||0).toFixed(2)}</td>
+          <td class="mono">${fmt.krw(binance.earnKRW||0)}</td>
+        </tr>`;
+    } else {
+      earnSection.style.display = 'none';
+    }
 
     // 업비트 (스테이킹 수동입력 합산)
     document.getElementById('upTotal').textContent = fmt.krw((upbit.totalKRW || 0) + upbitStaking);
