@@ -697,12 +697,12 @@ async function refresh() {
           <td class="mono">${e.asset}</td>
           <td>${e.type === 'locked' ? '🔒 락업' : '💧 유연'}</td>
           <td class="mono">${(e.amount||0).toLocaleString(undefined,{maximumFractionDigits:6})}</td>
-          <td class="mono">${e.apy ? (e.apy*100).toFixed(2)+'%' : '-'}</td>
+          <td class="mono">${e.apy ? (e.apy*100).toFixed(2)+'%' : '-'}<br><span style="color:var(--green);font-size:11px">${e.apy ? '+$'+((e.usdtValue||0)*e.apy).toFixed(2)+'/년' : ''}</span></td>
           <td class="mono">$${(e.usdtValue||0).toFixed(2)}</td>
           <td class="mono">${fmt.krw((e.usdtValue||0)*_usdKrwFx)}</td>
         </tr>`).join('') +
         `<tr style="font-weight:700;border-top:1px solid var(--border)">
-          <td colspan="4">합계</td>
+          <td colspan="4">합계 <span style="color:var(--green);font-weight:400;font-size:11px">(연 예상이자 +$${earnPos.reduce((a,e)=>a+(e.usdtValue||0)*(e.apy||0),0).toFixed(2)})</span></td>
           <td class="mono">$${(binance.earnUSDT||0).toFixed(2)}</td>
           <td class="mono">${fmt.krw(binance.earnKRW||0)}</td>
         </tr>`;
