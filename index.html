@@ -568,6 +568,16 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   </div>
 </div>
 
+<!-- 🪙 업비트 스테이킹 (수동입력 전용 섹션) -->
+<div class="section" id="upStakingSection" style="cursor:pointer" onclick="setUpbitStaking()">
+  <h2>🪙 업비트 스테이킹 <span style="opacity:0.55;font-size:12px;font-weight:400">✏️ 클릭하여 입력</span></h2>
+  <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:6px 0 2px">
+    <span id="upStakingKRW" style="font-size:30px;font-weight:800;color:#ffd54f">₩0</span>
+    <span id="upStakingUSDT" style="font-size:15px;color:var(--text-dim)">$0 USDT</span>
+  </div>
+  <div style="color:var(--text-dim);font-size:12px">업비트는 스테이킹 조회 공개 API가 없어 수동 입력 · 총자산에 합산됩니다</div>
+</div>
+
 <!-- 주식 시세 (NVIDIA / SK하이닉스) -->
 <div class="section">
   <h2>📈 주식 시세</h2>
@@ -715,6 +725,10 @@ async function refresh() {
     document.getElementById('upSplit').textContent =
       `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}` +
       (upbitStaking > 0 ? `/스테이킹 ${fmt.krw(upbitStaking)}` : ' · 스테이킹 ✏️클릭입력');
+
+    // 업비트 스테이킹 전용 섹션 (크게)
+    document.getElementById('upStakingKRW').textContent = fmt.krw(upbitStaking);
+    document.getElementById('upStakingUSDT').textContent = '$' + (upbitStaking / _usdKrwFx).toFixed(2) + ' USDT';
 
     // ⚡ Margin Ratio (위험 시 깜빡임)
     const mr = binance.marginRatio || 0;
