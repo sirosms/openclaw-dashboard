@@ -488,7 +488,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   </div>
   <!-- 2-1. 스페이스x (총자산 바로 위) -->
   <div class="card" id="spacexCard" style="cursor:pointer" onclick="editSpacex()">
-    <div class="card-label">🚀 스페이스x <span style="opacity:0.5">✏️</span></div>
+    <div class="card-label" id="spacexLabel">🚀 스페이스x <span style="opacity:0.5">✏️</span></div>
     <div class="card-value" id="spacexValue" style="font-size:20px">-</div>
     <div class="timestamp" id="spacexSub">-</div>
   </div>
@@ -1163,8 +1163,11 @@ function editSpacex() {
 async function refreshSpacex() {
   const valEl = document.getElementById('spacexValue');
   const subEl = document.getElementById('spacexSub');
+  const labelEl = document.getElementById('spacexLabel');
   if (!valEl || !subEl) return;
   const { qty, avg } = getSpacex();
+  // 라벨에 보유 수량 항상 노출 (입력 반영 확인용)
+  if (labelEl) labelEl.innerHTML = `🚀 스페이스x · 보유 ${fmt.qty(qty)}주 <span style="opacity:0.5">✏️</span>`;
   let q = null;
   try {
     const res = await fetch(API_BASE + '/api/quote?symbols=' + SPACEX_SYMBOL, fetchOpts());
@@ -1174,27 +1177,27 @@ async function refreshSpacex() {
   if (!q || q.price == null) {
     valEl.textContent = '시세 조회 실패';
     valEl.className = 'card-value';
-    subEl.textContent = `${SPACEX_SYMBOL} · ${fmt.qty(qty)}주`;
+    subEl.textContent = `${SPACEX_SYMBOL} · 보유 ${fmt.qty(qty)}주`;
     return;
   }
   const usdKrw = LAST_USDKRW || 1476;
   const valueUSD = qty * q.price;
   const valueKRW = valueUSD * usdKrw;
-  valEl.textContent = fmt.krw(valueKRW);
-  valEl.className = 'card-value';
-  // 등락/수익률 표시
+  const chgC = q.changePct >= 0 ? 'long' : 'short';
   const chgArrow = q.changePct >= 0 ? '▲' : '▼';
-  let line = `${fmt.qty(qty)}주 × $${q.price.toFixed(2)} = $${valueUSD.toFixed(2)} · ${chgArrow}${Math.abs(q.changePct).toFixed(2)}%`;
+  // 평가금(₩) 크게, 보유수량×현재가는 작게 (SK하이닉스 가격표시 + 수량 반영)
+  valEl.innerHTML = `${fmt.krw(valueKRW)} <span style="font-size:12px;opacity:0.65">($${valueUSD.toFixed(2)})</span>`;
+  valEl.className = 'card-value';
+  let line = `현재가 $${q.price.toFixed(2)} <span class="${chgC}">${chgArrow}${Math.abs(q.changePct).toFixed(2)}%</span> · ${fmt.qty(qty)}주`;
   if (avg > 0) {
     const pnlPct = (q.price - avg) / avg * 100;
     const pnlUSD = qty * (q.price - avg);
+    const pc = pnlPct >= 0 ? 'long' : 'short';
     const sign = pnlPct >= 0 ? '+' : '';
-    line += ` · 수익률 ${sign}${pnlPct.toFixed(2)}% (${sign}$${pnlUSD.toFixed(2)})`;
-    subEl.className = 'timestamp ' + (pnlPct >= 0 ? 'long' : 'short');
-  } else {
-    subEl.className = 'timestamp';
+    line += ` · <span class="${pc}">수익률 ${sign}${pnlPct.toFixed(2)}% (${sign}$${pnlUSD.toFixed(2)})</span>`;
   }
-  subEl.textContent = line;
+  subEl.className = 'timestamp';
+  subEl.innerHTML = line;
 }
 
 function addVoiceLog(msg, type) {
