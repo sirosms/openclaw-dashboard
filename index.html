@@ -520,11 +520,11 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="fxRate" style="font-size:22px">-</div>
     <div class="timestamp" id="fxTs">실시간</div>
   </div>
-  <!-- 상단 미니 주식: 엔비디아 -->
+  <!-- 상단 미니 주식: 스페이스x (실시간) -->
   <div class="card">
-    <div class="card-label">🇺🇸 엔비디아</div>
-    <div class="card-value" id="miniNvda" style="font-size:20px">-</div>
-    <div class="timestamp" id="miniNvdaChg">-</div>
+    <div class="card-label">🚀 스페이스x</div>
+    <div class="card-value" id="miniSpacex" style="font-size:20px">-</div>
+    <div class="timestamp" id="miniSpacexChg">-</div>
   </div>
   <!-- 상단 미니 주식: SK하이닉스 -->
   <div class="card">
@@ -933,16 +933,16 @@ async function refreshStocks() {
     if (!r.ok && !r.stocks) throw new Error('주식 응답 없음');
     const stocks = r.stocks || [];
 
-    // 1) 상단 미니 카드 (NVIDIA + SK하이닉스만)
-    const nvda = stocks.find(s => s.symbol === 'NVDA');
+    // 1) 상단 미니 카드 (스페이스x + SK하이닉스)
+    const spx = stocks.find(s => s.symbol === 'DXYZ');
     const skh = stocks.find(s => s.symbol === '000660.KS');
-    if (nvda) {
-      const cls = nvda.changePct >= 0 ? 'long' : 'short';
-      const arrow = nvda.changePct >= 0 ? '▲' : '▼';
-      const el = document.getElementById('miniNvda');
-      if (el) { el.textContent = fmtStockPrice(nvda); el.className = 'card-value ' + cls; }
-      const chgEl = document.getElementById('miniNvdaChg');
-      if (chgEl) { chgEl.textContent = `${arrow} ${nvda.changePct.toFixed(2)}%`; chgEl.className = 'timestamp ' + cls; }
+    if (spx) {
+      const cls = spx.changePct >= 0 ? 'long' : 'short';
+      const arrow = spx.changePct >= 0 ? '▲' : '▼';
+      const el = document.getElementById('miniSpacex');
+      if (el) { el.textContent = fmtStockPrice(spx); el.className = 'card-value ' + cls; }
+      const chgEl = document.getElementById('miniSpacexChg');
+      if (chgEl) { chgEl.textContent = `${arrow} ${spx.changePct.toFixed(2)}%`; chgEl.className = 'timestamp ' + cls; }
     }
     if (skh) {
       const cls = skh.changePct >= 0 ? 'long' : 'short';
@@ -1145,18 +1145,16 @@ function getSpacex() {
     const raw = localStorage.getItem(SPACEX_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  // 기본: 6주 매수, 평균매입가 미입력
-  const seed = { qty: 6, avg: 0 };
+  // 기본: 6주 보유
+  const seed = { qty: 6 };
   localStorage.setItem(SPACEX_KEY, JSON.stringify(seed));
   return seed;
 }
 function editSpacex() {
   const cur = getSpacex();
-  const qtyStr = prompt('스페이스x 보유 수량 (주)', String(cur.qty || 0));
+  const qtyStr = prompt('스페이스x 총 보유 수량 (주)', String(cur.qty || 0));
   if (qtyStr === null) return;
-  const avgStr = prompt('스페이스x 평균 매입가 (₩ 원화 · 1주당 · 모르면 0)', String(cur.avg || 0));
-  if (avgStr === null) return;
-  const next = { qty: parseFloat(qtyStr.replace(/,/g,'')) || 0, avg: parseFloat(avgStr.replace(/,/g,'')) || 0 };
+  const next = { qty: parseFloat(qtyStr.replace(/,/g,'')) || 0 };
   localStorage.setItem(SPACEX_KEY, JSON.stringify(next));
   refreshSpacex();
 }
@@ -1165,9 +1163,9 @@ async function refreshSpacex() {
   const subEl = document.getElementById('spacexSub');
   const labelEl = document.getElementById('spacexLabel');
   if (!valEl || !subEl) return;
-  const { qty, avg } = getSpacex();
+  const { qty } = getSpacex();
   // 라벨에 보유 수량 항상 노출 (입력 반영 확인용)
-  if (labelEl) labelEl.innerHTML = `🚀 스페이스x · 보유 ${fmt.qty(qty)}주 <span style="opacity:0.5">✏️</span>`;
+  if (labelEl) labelEl.innerHTML = `🚀 스페이스x 주식 총자산 · ${fmt.qty(qty)}주 <span style="opacity:0.5">✏️</span>`;
   let q = null;
   try {
     const res = await fetch(API_BASE + '/api/quote?symbols=' + SPACEX_SYMBOL, fetchOpts());
@@ -1181,25 +1179,17 @@ async function refreshSpacex() {
     return;
   }
   const usdKrw = LAST_USDKRW || 1476;
+  const priceKRW = q.price * usdKrw;       // 현재 단가 (원/주)
+  const valueKRW = qty * priceKRW;         // 총수량 × 현재단가 = 주식 총자산
   const valueUSD = qty * q.price;
-  const valueKRW = valueUSD * usdKrw;
   const chgC = q.changePct >= 0 ? 'long' : 'short';
   const chgArrow = q.changePct >= 0 ? '▲' : '▼';
-  // 평가금(₩) 크게, 보유수량×현재가는 작게 (SK하이닉스 가격표시 + 수량 반영)
+  // 주식 총자산(₩) 크게, 달러 병기
   valEl.innerHTML = `${fmt.krw(valueKRW)} <span style="font-size:12px;opacity:0.65">($${valueUSD.toFixed(2)})</span>`;
   valEl.className = 'card-value';
-  const priceKRW = q.price * usdKrw;  // 현재가 (원/주)
-  let line = `현재가 ${fmt.krw(priceKRW)} <span style="opacity:0.6">($${q.price.toFixed(2)})</span> <span class="${chgC}">${chgArrow}${Math.abs(q.changePct).toFixed(2)}%</span> · ${fmt.qty(qty)}주`;
-  if (avg > 0) {
-    // avg = 평균매입가 (원/주, 원화 입력)
-    const pnlPct = (priceKRW - avg) / avg * 100;
-    const pnlKRW = qty * (priceKRW - avg);
-    const pc = pnlPct >= 0 ? 'long' : 'short';
-    const sign = pnlPct >= 0 ? '+' : '';
-    line += ` · <span class="${pc}">수익률 ${sign}${pnlPct.toFixed(2)}% (${sign}${fmt.krw(pnlKRW)})</span>`;
-  }
+  // 총수량 × 현재단가 = 주식 총자산
   subEl.className = 'timestamp';
-  subEl.innerHTML = line;
+  subEl.innerHTML = `${fmt.qty(qty)}주 × 현재단가 ${fmt.krw(priceKRW)} <span style="opacity:0.6">($${q.price.toFixed(2)})</span> <span class="${chgC}">${chgArrow}${Math.abs(q.changePct).toFixed(2)}%</span>`;
 }
 
 function addVoiceLog(msg, type) {
