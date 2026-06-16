@@ -1154,7 +1154,7 @@ function editSpacex() {
   const cur = getSpacex();
   const qtyStr = prompt('스페이스x 보유 수량 (주)', String(cur.qty || 0));
   if (qtyStr === null) return;
-  const avgStr = prompt('스페이스x 평균 매입가 ($ · 모르면 0)', String(cur.avg || 0));
+  const avgStr = prompt('스페이스x 평균 매입가 (₩ 원화 · 1주당 · 모르면 0)', String(cur.avg || 0));
   if (avgStr === null) return;
   const next = { qty: parseFloat(qtyStr.replace(/,/g,'')) || 0, avg: parseFloat(avgStr.replace(/,/g,'')) || 0 };
   localStorage.setItem(SPACEX_KEY, JSON.stringify(next));
@@ -1188,13 +1188,15 @@ async function refreshSpacex() {
   // 평가금(₩) 크게, 보유수량×현재가는 작게 (SK하이닉스 가격표시 + 수량 반영)
   valEl.innerHTML = `${fmt.krw(valueKRW)} <span style="font-size:12px;opacity:0.65">($${valueUSD.toFixed(2)})</span>`;
   valEl.className = 'card-value';
-  let line = `현재가 $${q.price.toFixed(2)} <span class="${chgC}">${chgArrow}${Math.abs(q.changePct).toFixed(2)}%</span> · ${fmt.qty(qty)}주`;
+  const priceKRW = q.price * usdKrw;  // 현재가 (원/주)
+  let line = `현재가 ${fmt.krw(priceKRW)} <span style="opacity:0.6">($${q.price.toFixed(2)})</span> <span class="${chgC}">${chgArrow}${Math.abs(q.changePct).toFixed(2)}%</span> · ${fmt.qty(qty)}주`;
   if (avg > 0) {
-    const pnlPct = (q.price - avg) / avg * 100;
-    const pnlUSD = qty * (q.price - avg);
+    // avg = 평균매입가 (원/주, 원화 입력)
+    const pnlPct = (priceKRW - avg) / avg * 100;
+    const pnlKRW = qty * (priceKRW - avg);
     const pc = pnlPct >= 0 ? 'long' : 'short';
     const sign = pnlPct >= 0 ? '+' : '';
-    line += ` · <span class="${pc}">수익률 ${sign}${pnlPct.toFixed(2)}% (${sign}$${pnlUSD.toFixed(2)})</span>`;
+    line += ` · <span class="${pc}">수익률 ${sign}${pnlPct.toFixed(2)}% (${sign}${fmt.krw(pnlKRW)})</span>`;
   }
   subEl.className = 'timestamp';
   subEl.innerHTML = line;
