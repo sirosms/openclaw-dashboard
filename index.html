@@ -35,6 +35,9 @@
 
 html, body {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
   font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
@@ -53,7 +56,8 @@ body {
   overflow-x: hidden;
 }
 
-.container { max-width: 1400px; margin: 0 auto; }
+.container { max-width: 1400px; margin: 0 auto; width: 100%; }
+.card-value { overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
 
 /* ━━━ Header ━━━ */
 header {
@@ -372,7 +376,10 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     padding: 4px 0 !important;
     border: none !important;
     font-size: 12px;
-    word-break: break-all;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal !important;   /* line 269 nowrap 해제 → 긴 값 줄바꿈 */
+    min-width: 0;
   }
   td::before {
     content: attr(data-label);
@@ -578,6 +585,20 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     </table>
   </div>
   <div style="color:var(--text-dim);font-size:12px;margin-top:8px">업비트는 스테이킹 조회 공개 API가 없어 수동 입력 · 총자산에 합산됩니다</div>
+</div>
+
+<!-- 📊 내 주식 보유 (수익률) — 스페이스x 등 -->
+<div class="section" id="stockHoldingSection">
+  <h2>📊 내 주식 보유 (수익률) <button onclick="addStockHolding()" style="background:rgba(100,181,246,0.18);color:#64b5f6;border:1px solid rgba(100,181,246,0.4);padding:6px 12px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px">+ 종목 추가</button></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>종목</th><th>티커</th><th>수량</th><th>평균매입가</th><th>현재가</th><th>평가금</th><th>수익률</th><th>손익</th><th></th>
+      </tr></thead>
+      <tbody id="stockHoldingTable"><tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:16px">로딩...</td></tr></tbody>
+    </table>
+  </div>
+  <div style="color:var(--text-dim);font-size:12px;margin-top:8px">실시간 시세(Yahoo) 연동 · 수량·평균매입가 입력 시 수익률 자동 계산 · 수량셀 클릭 ✏️로 수정 · 비상장(SpaceX)은 상장 프록시 티커 <b>DXYZ</b>(Destiny Tech100) 사용</div>
 </div>
 
 <!-- 주식 시세 (NVIDIA / SK하이닉스) -->
