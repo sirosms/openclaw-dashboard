@@ -433,9 +433,10 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   #upPnlCard       { order: 3 !important; }   /* 🔵 업비트 PnL */
   .return-priority { order: 4 !important; }   /* 📈 수익률 (ROI) — 업비트 PnL 다음 */
   #mrCard          { order: 5 !important; }   /* ⚡ Margin Ratio (위험 알림) */
-  .card.hero       { order: 6 !important; }   /* 💰 총 자산 — 가장 마지막 */
+  #spacexCard      { order: 6 !important; }   /* 🚀 스페이스x — 총자산 바로 위 */
+  .card.hero       { order: 7 !important; }   /* 💰 총 자산 — 가장 마지막 */
   /* 나머지 (바이낸스 잔고, 업비트 잔고, 환율, 주식 미니카드 등) */
-  .summary .card:not(.pnl-priority):not(.return-priority):not(.hero):not(#mrCard):not(#bnPnlCard):not(#upPnlCard) {
+  .summary .card:not(.pnl-priority):not(.return-priority):not(.hero):not(#mrCard):not(#bnPnlCard):not(#upPnlCard):not(#spacexCard) {
     order: 10;
   }
 }
@@ -485,6 +486,12 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="returnPct">-</div>
     <div class="timestamp" id="profitKRW">-</div>
   </div>
+  <!-- 2-1. 스페이스x (총자산 바로 위) -->
+  <div class="card" id="spacexCard" style="cursor:pointer" onclick="editSpacex()">
+    <div class="card-label">🚀 스페이스x <span style="opacity:0.5">✏️</span></div>
+    <div class="card-value" id="spacexValue" style="font-size:20px">-</div>
+    <div class="timestamp" id="spacexSub">-</div>
+  </div>
   <!-- 3. 총 자산 -->
   <div class="card hero">
     <div class="card-label">💰 총 자산</div>
@@ -513,9 +520,9 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="fxRate" style="font-size:22px">-</div>
     <div class="timestamp" id="fxTs">실시간</div>
   </div>
-  <!-- 상단 미니 주식: NVIDIA -->
+  <!-- 상단 미니 주식: 엔비디아 -->
   <div class="card">
-    <div class="card-label">🇺🇸 NVIDIA</div>
+    <div class="card-label">🇺🇸 엔비디아</div>
     <div class="card-value" id="miniNvda" style="font-size:20px">-</div>
     <div class="timestamp" id="miniNvdaChg">-</div>
   </div>
@@ -585,20 +592,6 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     </table>
   </div>
   <div style="color:var(--text-dim);font-size:12px;margin-top:8px">업비트는 스테이킹 조회 공개 API가 없어 수동 입력 · 총자산에 합산됩니다</div>
-</div>
-
-<!-- 📊 내 주식 보유 (수익률) — 스페이스x 등 -->
-<div class="section" id="stockHoldingSection">
-  <h2>📊 내 주식 보유 (수익률) <button onclick="addStockHolding()" style="background:rgba(100,181,246,0.18);color:#64b5f6;border:1px solid rgba(100,181,246,0.4);padding:6px 12px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px">+ 종목 추가</button></h2>
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>종목</th><th>티커</th><th>수량</th><th>평균매입가</th><th>현재가</th><th>평가금</th><th>수익률</th><th>손익</th><th></th>
-      </tr></thead>
-      <tbody id="stockHoldingTable"><tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:16px">로딩...</td></tr></tbody>
-    </table>
-  </div>
-  <div style="color:var(--text-dim);font-size:12px;margin-top:8px">실시간 시세(Yahoo) 연동 · 수량·평균매입가 입력 시 수익률 자동 계산 · 수량셀 클릭 ✏️로 수정 · 비상장(SpaceX)은 상장 프록시 티커 <b>DXYZ</b>(Destiny Tech100) 사용</div>
 </div>
 
 <!-- 주식 시세 (NVIDIA / SK하이닉스) -->
@@ -981,10 +974,10 @@ async function refreshStocks() {
 document.getElementById('refreshBtn').onclick = refresh;
 refresh();
 refreshStocks();
-refreshHoldings();
+refreshSpacex();
 setInterval(refresh, 5000);
 setInterval(refreshStocks, 60_000);  // 주식 1분
-setInterval(refreshHoldings, 60_000);  // 보유 주식 1분
+setInterval(refreshSpacex, 60_000);  // 스페이스x 1분
 
 // ━━━ 클릭 효과 (Ripple) — 모든 버튼/카드/심볼태그에 자동 적용 ━━━
 function attachRipple(el) {
@@ -1144,116 +1137,64 @@ function renderUpStaking(usdKrw) {
   </tr>`;
 }
 
-// 📊 내 주식 보유 (수익률) — 실시간 시세(Yahoo) × 수량/평균매입가
-const STOCK_HOLD_KEY = 'JARVIS_STOCK_HOLDINGS';
-function getStockHoldings() {
+// 🚀 스페이스x — 상장 프록시 DXYZ(데스티니 테크100) 실시간 시세 × 보유 수량
+const SPACEX_KEY = 'JARVIS_SPACEX';
+const SPACEX_SYMBOL = 'DXYZ';
+function getSpacex() {
   try {
-    const raw = localStorage.getItem(STOCK_HOLD_KEY);
-    if (raw) return JSON.parse(raw) || [];
+    const raw = localStorage.getItem(SPACEX_KEY);
+    if (raw) return JSON.parse(raw);
   } catch {}
-  // 기본 시드: 스페이스x (상장 프록시 DXYZ = Destiny Tech100, SpaceX 최대 비중)
-  const seed = [{ name: '스페이스x', symbol: 'DXYZ', qty: 0, avg: 0 }];
-  localStorage.setItem(STOCK_HOLD_KEY, JSON.stringify(seed));
+  // 기본: 6주 매수, 평균매입가 미입력
+  const seed = { qty: 6, avg: 0 };
+  localStorage.setItem(SPACEX_KEY, JSON.stringify(seed));
   return seed;
 }
-function saveStockHoldings(list) { localStorage.setItem(STOCK_HOLD_KEY, JSON.stringify(list)); }
-function addStockHolding() {
-  const name = prompt('종목명 (예: 스페이스x, 테슬라)');
-  if (!name) return;
-  const symbol = prompt(`${name} 티커 (Yahoo 심볼 · 예: DXYZ, TSLA, NVDA, 000660.KS)`);
-  if (!symbol) return;
-  const qtyStr = prompt(`${name} 보유 수량`, '0');
+function editSpacex() {
+  const cur = getSpacex();
+  const qtyStr = prompt('스페이스x 보유 수량 (주)', String(cur.qty || 0));
   if (qtyStr === null) return;
-  const avgStr = prompt(`${name} 평균 매입가 (현지통화 · 예: 달러면 28.5)`, '0');
+  const avgStr = prompt('스페이스x 평균 매입가 ($ · 모르면 0)', String(cur.avg || 0));
   if (avgStr === null) return;
-  const list = getStockHoldings();
-  list.push({ name: name.trim(), symbol: symbol.toUpperCase().trim(), qty: parseFloat(qtyStr.replace(/,/g,''))||0, avg: parseFloat(avgStr.replace(/,/g,''))||0 });
-  saveStockHoldings(list);
-  refreshHoldings();
+  const next = { qty: parseFloat(qtyStr.replace(/,/g,'')) || 0, avg: parseFloat(avgStr.replace(/,/g,'')) || 0 };
+  localStorage.setItem(SPACEX_KEY, JSON.stringify(next));
+  refreshSpacex();
 }
-function editStockHolding(i) {
-  const list = getStockHoldings();
-  const h = list[i]; if (!h) return;
-  const qtyStr = prompt(`${h.name} 보유 수량`, String(h.qty||0));
-  if (qtyStr === null) return;
-  const avgStr = prompt(`${h.name} 평균 매입가`, String(h.avg||0));
-  if (avgStr === null) return;
-  h.qty = parseFloat(qtyStr.replace(/,/g,''))||0;
-  h.avg = parseFloat(avgStr.replace(/,/g,''))||0;
-  saveStockHoldings(list);
-  refreshHoldings();
-}
-function removeStockHolding(i) {
-  const list = getStockHoldings();
-  if (!list[i]) return;
-  if (!confirm(`${list[i].name} 삭제?`)) return;
-  list.splice(i, 1);
-  saveStockHoldings(list);
-  refreshHoldings();
-}
-async function refreshHoldings() {
-  const tbody = document.getElementById('stockHoldingTable');
-  if (!tbody) return;
-  const list = getStockHoldings();
-  if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:16px">"+ 종목 추가" 버튼으로 보유 주식을 입력하세요</td></tr>';
+async function refreshSpacex() {
+  const valEl = document.getElementById('spacexValue');
+  const subEl = document.getElementById('spacexSub');
+  if (!valEl || !subEl) return;
+  const { qty, avg } = getSpacex();
+  let q = null;
+  try {
+    const res = await fetch(API_BASE + '/api/quote?symbols=' + SPACEX_SYMBOL, fetchOpts());
+    const r = await res.json();
+    q = (r.quotes || []).find(x => x.symbol === SPACEX_SYMBOL);
+  } catch (e) { console.error('spacex quote error:', e); }
+  if (!q || q.price == null) {
+    valEl.textContent = '시세 조회 실패';
+    valEl.className = 'card-value';
+    subEl.textContent = `${SPACEX_SYMBOL} · ${fmt.qty(qty)}주`;
     return;
   }
-  let quotes = [];
-  try {
-    const syms = [...new Set(list.map(h => h.symbol))].join(',');
-    const res = await fetch(API_BASE + '/api/quote?symbols=' + encodeURIComponent(syms), fetchOpts());
-    const r = await res.json();
-    quotes = r.quotes || [];
-  } catch (e) { console.error('quote error:', e); }
-  const qmap = {};
-  quotes.forEach(q => { qmap[q.symbol] = q; });
   const usdKrw = LAST_USDKRW || 1476;
-  const fmtCur = (n, cur) => cur === 'USD'
-    ? '$' + (n||0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})
-    : '₩' + Math.round(n||0).toLocaleString();
-  let totalKRW = 0, totalCostKRW = 0;
-  const rows = list.map((h, i) => {
-    const q = qmap[h.symbol];
-    const cur = (q && q.currency) || 'USD';
-    const price = (q && q.price != null) ? q.price : null;
-    const qty = h.qty||0, avg = h.avg||0;
-    const delBtn = `<td><button onclick="removeStockHolding(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="삭제">✕</button></td>`;
-    if (price == null) {
-      return `<tr><td>${h.name}</td><td class="mono">${h.symbol}</td><td class="mono" onclick="editStockHolding(${i})" style="cursor:pointer">${fmt.qty(qty)} ✏️</td><td class="mono">${fmtCur(avg,cur)}</td><td colspan="4" style="color:#ff5252">시세 조회 실패</td>${delBtn}</tr>`;
-    }
-    const toKrw = cur === 'USD' ? usdKrw : 1;
-    const value = qty * price;
-    const pnl = qty * (price - avg);
-    const pnlPct = avg > 0 ? (price - avg) / avg * 100 : 0;
-    totalKRW += value * toKrw;
-    totalCostKRW += qty * avg * toKrw;
-    const c = pnlPct >= 0 ? 'long' : 'short';
-    const chgC = q.changePct >= 0 ? 'long' : 'short';
-    const chgArrow = q.changePct >= 0 ? '▲' : '▼';
-    return `<tr>
-      <td>${h.name}</td>
-      <td class="mono">${h.symbol} <span class="${chgC}" style="font-size:10px">${chgArrow}${q.changePct.toFixed(2)}%</span></td>
-      <td class="mono" onclick="editStockHolding(${i})" style="cursor:pointer" title="수량·평균가 수정">${fmt.qty(qty)} ✏️</td>
-      <td class="mono">${avg>0?fmtCur(avg,cur):'-'}</td>
-      <td class="mono">${fmtCur(price,cur)}</td>
-      <td class="mono">${fmtCur(value,cur)}<br><span style="opacity:0.6;font-size:10px">${fmt.krw(value*toKrw)}</span></td>
-      <td class="mono ${c}">${avg>0?((pnlPct>=0?'+':'')+pnlPct.toFixed(2)+'%'):'-'}</td>
-      <td class="mono ${c}">${avg>0?((pnl>=0?'+':'')+fmtCur(pnl,cur)+'<br><span style="opacity:0.6;font-size:10px">'+(pnl>=0?'+':'')+fmt.krw(pnl*toKrw)+'</span>'):'-'}</td>
-      ${delBtn}
-    </tr>`;
-  }).join('');
-  const totalPnlKRW = totalKRW - totalCostKRW;
-  const tc = totalPnlKRW >= 0 ? 'long' : 'short';
-  const totalPct = totalCostKRW > 0 ? (totalPnlKRW / totalCostKRW * 100) : 0;
-  const totalRow = `<tr style="font-weight:700;border-top:1px solid var(--border)">
-    <td colspan="5">합계 (평가금)</td>
-    <td class="mono">${fmt.krw(totalKRW)}</td>
-    <td class="mono ${tc}">${totalCostKRW>0?((totalPct>=0?'+':'')+totalPct.toFixed(2)+'%'):'-'}</td>
-    <td class="mono ${tc}">${totalCostKRW>0?((totalPnlKRW>=0?'+':'')+fmt.krw(totalPnlKRW)):'-'}</td>
-    <td></td>
-  </tr>`;
-  tbody.innerHTML = rows + totalRow;
+  const valueUSD = qty * q.price;
+  const valueKRW = valueUSD * usdKrw;
+  valEl.textContent = fmt.krw(valueKRW);
+  valEl.className = 'card-value';
+  // 등락/수익률 표시
+  const chgArrow = q.changePct >= 0 ? '▲' : '▼';
+  let line = `${fmt.qty(qty)}주 × $${q.price.toFixed(2)} = $${valueUSD.toFixed(2)} · ${chgArrow}${Math.abs(q.changePct).toFixed(2)}%`;
+  if (avg > 0) {
+    const pnlPct = (q.price - avg) / avg * 100;
+    const pnlUSD = qty * (q.price - avg);
+    const sign = pnlPct >= 0 ? '+' : '';
+    line += ` · 수익률 ${sign}${pnlPct.toFixed(2)}% (${sign}$${pnlUSD.toFixed(2)})`;
+    subEl.className = 'timestamp ' + (pnlPct >= 0 ? 'long' : 'short');
+  } else {
+    subEl.className = 'timestamp';
+  }
+  subEl.textContent = line;
 }
 
 function addVoiceLog(msg, type) {
