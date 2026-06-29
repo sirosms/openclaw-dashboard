@@ -659,6 +659,26 @@ const fmt = {
 const cls = (n) => n>0 ? 'green' : n<0 ? 'red' : 'gray';
 let LAST_USDKRW = 1476;  // 보유 주식 KRW 환산용 (refresh마다 갱신)
 
+// 봇 파일명 → 한글 이름
+const BOT_NAMES = {
+  server: '🌐 대시보드 서버',
+  autoScalpWatcher: '👁 자동 스캘핑 감시',
+  commandBot: '📱 자비스 명령봇(텔레그램)',
+  scheduler: '⏰ 스케줄러(9AM 학습)',
+  btcDcaAlert: '📉 BTC DCA 알림',
+  emergencySlWatchdog: '🚨 긴급 손절 감시',
+  runShortBot: '📊 숏 신호봇',
+  multiScalp: '⚡ 멀티 스캘핑',
+  dynamicTrailer: '📈 동적 트레일링',
+  runUpbitScalp: '🪙 업비트 스캘핑',
+  fastScalpGuard: '⚡ 빠른 스캘핑 가드',
+  trendlineSlGuard: '📐 추세선 손절 가드',
+  longPositionGuard: '🛡 롱 포지션 가드',
+  bbBreakoutGuard: '📊 볼린저 돌파 가드',
+  btcAlignmentBot: '₿ BTC 정렬봇',
+};
+const botKo = (file) => BOT_NAMES[(String(file).match(/([A-Za-z]+)\.ts$/) || [])[1]] || '';
+
 // ngrok 무료 플랜 경고 페이지 우회 + 기타 터널 호환
 const fetchOpts = (extra) => ({
   headers: {
@@ -908,12 +928,15 @@ async function refresh() {
         <td data-label="PnL₩" class="mono ${cls(h.pnlKRW)}">${fmt.krw(h.pnlKRW)}</td>
       </tr>`).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:24px">보유 없음</td></tr>`;
 
-    // 봇
-    document.getElementById('botList').innerHTML = bots.map(b => `
-      <div class="bot">
-        <div>${b.file.replace('src/openclaw/','').replace('src/upbit/','').replace('src/dashboard/','').replace('.ts','')}</div>
+    // 봇 (한글 이름 + 파일명)
+    document.getElementById('botList').innerHTML = bots.map(b => {
+      const base = String(b.file).replace(/^src\/[a-z]+\//, '').replace('.ts', '');
+      const ko = botKo(b.file);
+      return `<div class="bot">
+        <div>${ko ? ko + ' <span style="opacity:0.5;font-size:11px">· ' + base + '</span>' : base}</div>
         <div class="pid">PID ${b.pid}</div>
-      </div>`).join('') || '<div class="bot" style="border-left-color:var(--red)">가동 봇 없음</div>';
+      </div>`;
+    }).join('') || '<div class="bot" style="border-left-color:var(--red)">가동 봇 없음</div>';
   } catch (e) {
     console.error('refresh error:', e);
     const ts = document.getElementById('updateTs');
