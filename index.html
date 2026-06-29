@@ -481,10 +481,14 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="timestamp" id="upPnlUSD">-</div>
   </div>
   <!-- 2. 수익률 (모바일 2번째) -->
-  <div class="card return-priority" style="cursor:pointer" onclick="setInvest()">
-    <div class="card-label">📈 수익률 <span style="opacity:0.5">✏️</span></div>
+  <div class="card return-priority">
+    <div class="card-label">📈 수익률 (자동계산)</div>
+    <div style="font-size:10px;opacity:0.6;margin-top:2px">누적 · 입출금(총입금) 대비</div>
     <div class="card-value" id="returnPct">-</div>
     <div class="timestamp" id="profitKRW">-</div>
+    <div style="font-size:10px;opacity:0.6;margin-top:8px;border-top:1px solid var(--border);padding-top:6px">미실현 · 보유 포지션</div>
+    <div class="card-value" id="unrealReturnPct" style="font-size:20px">-</div>
+    <div class="timestamp" id="unrealProfitKRW">-</div>
   </div>
   <!-- 2-1. 스페이스x (총자산 바로 위) -->
   <div class="card" id="spacexCard" style="cursor:pointer" onclick="editSpacex()">
@@ -681,40 +685,36 @@ async function refresh() {
     document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
     document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / _usdKrwFx) + ' USDT';
 
-    // 수익률 — localStorage(입금-출금) 우선
+    // 수익률 — 서버 자동계산 (수동입력 무시). ① 누적(입출금 총입금 대비) ② 미실현(보유 포지션)
     const returnPctEl = document.getElementById('returnPct');
     const profitKRWEl = document.getElementById('profitKRW');
-    const dep = parseFloat(localStorage.getItem('JARVIS_DEPOSIT') || '0');
-    const wd  = parseFloat(localStorage.getItem('JARVIS_WITHDRAW') || '0');
-    const manualInvest = dep > 0 ? (dep - wd) : parseFloat(localStorage.getItem('JARVIS_INVEST_KRW') || '0');
-    // 수동 입력 원금 우선, 없으면 서버 자동(총입금 대비 손익)
-    const useServer = !(manualInvest > 0) && summary.returnPct != null;
-    let investKRW = manualInvest > 0 ? manualInvest : (summary.totalDepositKRW || summary.investKRW || 0);
-    if (investKRW > 0) {
-      const profit = useServer ? (summary.totalProfitKRW || 0) : (grandTotal - investKRW);
-      const rPct = useServer ? summary.returnPct : (profit / investKRW) * 100;
-      // 미실현 PnL 합산 (실현 시 시나리오)
-      const _fx = (r.exchange && r.exchange.USD_KRW) || 1476;
-      const unrealizedKRW = (summary.bnPnl || 0) * _fx + (summary.upPnlKRW || 0);
-      const unrealizedPct = (unrealizedKRW / investKRW) * 100;
-      // 실현 전(미실현 제외) 수익률 시나리오
-      const beforeRealizePct = ((profit - unrealizedKRW) / investKRW) * 100;
+    const unrealPctEl = document.getElementById('unrealReturnPct');
+    const unrealKRWEl = document.getElementById('unrealProfitKRW');
+    // ① 누적(입출금)
+    if (summary.returnPct != null) {
+      const rPct = summary.returnPct;
+      const profit = summary.totalProfitKRW || 0;
       returnPctEl.textContent = fmt.pct(rPct);
       returnPctEl.className = 'card-value ' + cls(rPct);
       profitKRWEl.innerHTML = (profit>=0?'+':'') + fmt.krw(profit) +
-        '<br><span style="opacity:0.85;font-size:11px;color:' + (unrealizedKRW>=0?'var(--green)':'var(--red)') + '">' +
-        '💹 미실현 실현시 ' + (unrealizedPct>=0?'+':'') + unrealizedPct.toFixed(2) + '% · ' +
-        (unrealizedKRW>=0?'+':'') + fmt.krw(unrealizedKRW) + '</span>' +
-        '<br><span style="opacity:0.55;font-size:10px">미실현 제외 ' + beforeRealizePct.toFixed(2) + '%</span>' +
-        (manualInvest > 0
-          ? (dep > 0
-              ? '<br><span style="opacity:0.6;font-size:10px">입금 ₩' + dep.toLocaleString() + ' - 출금 ₩' + wd.toLocaleString() + '</span>'
-              : '<br><span style="opacity:0.6;font-size:10px">투자 ' + fmt.krw(investKRW) + '</span>')
-          : '<br><span style="opacity:0.6;font-size:10px">총입금 ' + fmt.krw(investKRW) + ' 대비</span>');
+        '<br><span style="opacity:0.6;font-size:10px">총입금 ' + fmt.krw(summary.totalDepositKRW || 0) + ' 대비</span>';
     } else {
-      returnPctEl.textContent = '클릭✏️';
-      returnPctEl.className = 'card-value gold';
-      profitKRWEl.textContent = '입금/출금 입력하기';
+      returnPctEl.textContent = '-';
+      returnPctEl.className = 'card-value gray';
+      profitKRWEl.textContent = '입출금 데이터 없음';
+    }
+    // ② 미실현(보유 포지션)
+    if (summary.unrealizedPct != null) {
+      const uPct = summary.unrealizedPct;
+      const uKRW = summary.unrealizedKRW || 0;
+      unrealPctEl.textContent = fmt.pct(uPct);
+      unrealPctEl.className = 'card-value ' + cls(uPct);
+      unrealKRWEl.innerHTML = (uKRW>=0?'+':'') + fmt.krw(uKRW) +
+        '<br><span style="opacity:0.6;font-size:10px">포지션원금 ' + fmt.krw(summary.unrealizedBaseKRW || 0) + ' 대비</span>';
+    } else {
+      unrealPctEl.textContent = '-';
+      unrealPctEl.className = 'card-value gray';
+      unrealKRWEl.textContent = '열린 포지션 없음';
     }
 
     // 바이낸스 (KRW는 실시간 환율 적용 + USDT 동시 표시)
