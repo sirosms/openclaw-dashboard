@@ -621,14 +621,14 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <script>
 // MSA — Frontend (GitHub Pages) ↔ Backend API
-const DEFAULT_API = 'https://frighten-spoken-duke.ngrok-free.dev';
+const DEFAULT_API = 'https://pill-eating-situation-driven.trycloudflare.com';
 const params = new URLSearchParams(location.search);
 const apiFromQuery = params.get('api');
 if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
 
-// 옛날 localStorage 값 자동 무효화 (localhost/lt/cloudflare/127 등)
+// 옛날 localStorage 값 자동 무효화 (localhost/ngrok/127 등) — 현재 백엔드는 cloudflare 터널
 let stored = localStorage.getItem('OPENCLAW_API');
-if (stored && /(localhost|127\.0|loca\.lt|trycloudflare|lhr\.life)/i.test(stored)) {
+if (stored && /(localhost|127\.0|loca\.lt|ngrok|lhr\.life)/i.test(stored)) {
   console.warn('[API_BASE] 옛 도메인 감지, 기본값으로 리셋:', stored);
   localStorage.removeItem('OPENCLAW_API');
   stored = null;
