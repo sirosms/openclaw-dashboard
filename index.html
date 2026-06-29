@@ -602,6 +602,13 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   </div>
 </div>
 
+<!-- 🧠 OpenClaw 학습 -->
+<div class="section" id="learningSection">
+  <h2>🧠 OpenClaw 학습</h2>
+  <div class="summary" id="learnCards"><div class="card">로딩...</div></div>
+  <div id="learnReflection" style="margin-top:12px"></div>
+</div>
+
 <!-- 봇 -->
 <div class="section">
   <h2>🤖 가동 봇</h2>
@@ -975,13 +982,51 @@ async function refreshStocks() {
   }
 }
 
+// 🧠 OpenClaw 학습 — 승률·9AM 회고·최신 AI 분석
+async function refreshLearning() {
+  const cardsEl = document.getElementById('learnCards');
+  const reflEl = document.getElementById('learnReflection');
+  if (!cardsEl) return;
+  try {
+    const res = await fetch(API_BASE + '/api/learning', fetchOpts());
+    const d = await res.json();
+    if (!d.ok) throw new Error(d.error || '학습 응답 없음');
+    const tsKR = (s) => { if (!s) return '없음'; try { return new Date(s).toLocaleString('ko-KR', {timeZone:'Asia/Seoul', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}); } catch { return s; } };
+    const wc = d.winRate >= 50 ? 'long' : 'short';
+    cardsEl.innerHTML =
+      `<div class="card"><div class="card-label">📊 승률</div><div class="card-value ${wc}">${d.winRate}%</div><div class="timestamp">${d.totalTrades}건 누적 학습</div></div>` +
+      `<div class="card"><div class="card-label">🌅 마지막 9AM 반영</div><div class="card-value" style="font-size:15px">${d.lastDailyReflection || '없음'}</div><div class="timestamp">회고 ${d.reflectionCount}건</div></div>` +
+      `<div class="card"><div class="card-label">🔄 records 동기화</div><div class="card-value" style="font-size:15px">${tsKR(d.lastRecordSync)}</div><div class="timestamp">스캔 ${d.totalScans}회</div></div>`;
+    const aj = d.latest && d.latest.aiJson;
+    if (aj) {
+      const arr = (x) => Array.isArray(x) ? x.map(v => typeof v === 'object' ? (v.symbol || JSON.stringify(v)) : v).join(', ') : '';
+      const tsl = Array.isArray(aj.tighten_sl) ? aj.tighten_sl.map(v => typeof v === 'object' ? (v.symbol + (v.reason ? `(${v.reason})` : '')) : v).join(', ') : '';
+      reflEl.innerHTML = `<div class="card" style="text-align:left;display:block">
+        <div class="card-label">🤖 최신 AI 회고 · ${d.latest.date || ''}</div>
+        ${aj.summary ? `<div style="margin:8px 0;font-size:13px">${aj.summary}</div>` : ''}
+        ${aj.immediate_close && aj.immediate_close.length ? `<div style="font-size:12px;margin-top:4px">🔴 즉시 익절: ${arr(aj.immediate_close)}</div>` : ''}
+        ${aj.hold && aj.hold.length ? `<div style="font-size:12px;margin-top:4px">🟢 보유: ${arr(aj.hold)}</div>` : ''}
+        ${tsl ? `<div style="font-size:12px;margin-top:4px">⚠️ SL 강화: ${tsl}</div>` : ''}
+        ${aj.today_strategy ? `<div style="font-size:12px;opacity:0.85;margin-top:6px">📌 전략: ${aj.today_strategy}</div>` : ''}
+        ${aj.risk_warning ? `<div style="font-size:12px;color:var(--red);margin-top:4px">⚠️ ${aj.risk_warning}</div>` : ''}
+      </div>`;
+    } else {
+      reflEl.innerHTML = '';
+    }
+  } catch (e) {
+    cardsEl.innerHTML = `<div class="card" style="color:#ff5252">학습 로드 실패: ${e.message}</div>`;
+  }
+}
+
 document.getElementById('refreshBtn').onclick = refresh;
 refresh();
 refreshStocks();
 refreshSpacex();
+refreshLearning();
 setInterval(refresh, 5000);
 setInterval(refreshStocks, 60_000);  // 주식 1분
 setInterval(refreshSpacex, 60_000);  // 스페이스x 1분
+setInterval(refreshLearning, 120_000);  // 학습 2분
 
 // ━━━ 클릭 효과 (Ripple) — 모든 버튼/카드/심볼태그에 자동 적용 ━━━
 function attachRipple(el) {
