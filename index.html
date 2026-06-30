@@ -595,6 +595,19 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   <div style="color:var(--text-dim);font-size:12px;margin-top:8px">업비트는 스테이킹 조회 공개 API가 없어 수동 입력 · 총자산에 합산됩니다</div>
 </div>
 
+<!-- 🪙 토스증권 보유종목 -->
+<div class="section" id="tossSection">
+  <h2>🟦 토스증권 (해외주식)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>종목</th><th>수량</th><th>평균매입가</th><th>현재가</th><th>평가금</th><th>수익률</th><th>손익</th>
+      </tr></thead>
+      <tbody id="tossTable"><tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- 주식 시세 (NVIDIA / SK하이닉스) -->
 <div class="section">
   <h2>📈 주식 시세</h2>
@@ -1052,12 +1065,50 @@ async function refreshRealizedSince() {
   }
 }
 
+// 🟦 토스증권 보유종목 (해외주식)
+async function refreshToss() {
+  const tbody = document.getElementById('tossTable');
+  if (!tbody) return;
+  try {
+    const res = await fetch(API_BASE + '/api/toss', fetchOpts());
+    const d = await res.json();
+    if (!d.ok) throw new Error(d.error || '응답 없음');
+    const fx = d.usdKrw || LAST_USDKRW || 1476;
+    const items = d.items || [];
+    if (!items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:16px">보유 종목 없음</td></tr>'; return; }
+    const rows = items.map(it => {
+      const c = it.pnlRate >= 0 ? 'long' : 'short';
+      return `<tr>
+        <td>${it.name} <span style="opacity:0.5;font-size:11px">${it.symbol}</span></td>
+        <td class="mono">${Number(it.qty).toLocaleString(undefined,{maximumFractionDigits:6})}</td>
+        <td class="mono">$${it.avg.toFixed(2)}</td>
+        <td class="mono">$${it.price.toFixed(2)}</td>
+        <td class="mono">$${it.value.toFixed(2)}<br><span style="opacity:0.6;font-size:10px">${fmt.krw(it.value*fx)}</span></td>
+        <td class="mono ${c}">${(it.pnlRate*100>=0?'+':'')}${(it.pnlRate*100).toFixed(2)}%</td>
+        <td class="mono ${c}">${(it.pnl>=0?'+':'')}$${it.pnl.toFixed(2)}<br><span style="opacity:0.6;font-size:10px">${(it.pnl>=0?'+':'')}${fmt.krw(it.pnl*fx)}</span></td>
+      </tr>`;
+    }).join('');
+    const tc = d.totalPnlUSD >= 0 ? 'long' : 'short';
+    const total = `<tr style="font-weight:700;border-top:1px solid var(--border)">
+      <td colspan="4">합계 (평가/매입 $${d.totalValueUSD.toFixed(2)}/$${d.totalPurchaseUSD.toFixed(2)})</td>
+      <td class="mono">$${d.totalValueUSD.toFixed(2)}<br><span style="opacity:0.6;font-size:10px">${fmt.krw(d.totalValueUSD*fx)}</span></td>
+      <td class="mono ${tc}">${(d.totalPnlRate*100>=0?'+':'')}${(d.totalPnlRate*100).toFixed(2)}%</td>
+      <td class="mono ${tc}">${(d.totalPnlUSD>=0?'+':'')}$${d.totalPnlUSD.toFixed(2)}<br><span style="opacity:0.6;font-size:10px">${(d.totalPnlUSD>=0?'+':'')}${fmt.krw(d.totalPnlUSD*fx)}</span></td>
+    </tr>`;
+    tbody.innerHTML = rows + total;
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ff5252;padding:16px">토스 로드 실패: ${e.message}</td></tr>`;
+  }
+}
+
 document.getElementById('refreshBtn').onclick = refresh;
 refresh();
 refreshStocks();
 refreshSpacex();
 refreshLearning();
 refreshRealizedSince();
+refreshToss();
+setInterval(refreshToss, 60_000);  // 토스 1분
 setInterval(refresh, 5000);
 setInterval(refreshStocks, 60_000);  // 주식 1분
 setInterval(refreshSpacex, 60_000);  // 스페이스x 1분
