@@ -489,6 +489,9 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div style="font-size:10px;opacity:0.6;margin-top:8px;border-top:1px solid var(--border);padding-top:6px">미실현 · 보유 포지션</div>
     <div class="card-value" id="unrealReturnPct" style="font-size:20px">-</div>
     <div class="timestamp" id="unrealProfitKRW">-</div>
+    <div style="font-size:10px;opacity:0.6;margin-top:8px;border-top:1px solid var(--border);padding-top:6px">5월 이후 실현손익 · 바이낸스 선물</div>
+    <div class="card-value" id="realizedSinceMay" style="font-size:18px">-</div>
+    <div class="timestamp" id="realizedSinceMaySub">-</div>
   </div>
   <!-- 2-1. 스페이스x (총자산 바로 위) -->
   <div class="card" id="spacexCard" style="cursor:pointer" onclick="editSpacex()">
@@ -1041,15 +1044,39 @@ async function refreshLearning() {
   }
 }
 
+// 5월 이후 실현손익 (바이낸스 선물) — 서버 10분 캐시
+async function refreshRealizedSince() {
+  const valEl = document.getElementById('realizedSinceMay');
+  const subEl = document.getElementById('realizedSinceMaySub');
+  if (!valEl) return;
+  try {
+    const res = await fetch(API_BASE + '/api/realized-since', fetchOpts());
+    const d = await res.json();
+    if (!d.ok) throw new Error(d.error || '응답 없음');
+    const fx = LAST_USDKRW || 1476;
+    const krw = d.netKRW != null ? d.netKRW : (d.netUSD || 0) * fx;
+    const c = (d.netUSD || 0) >= 0 ? 'long' : 'short';
+    valEl.innerHTML = `${(krw>=0?'+':'')}${fmt.krw(krw)} <span style="font-size:12px;opacity:0.65">(${(d.netUSD>=0?'+':'')}$${(d.netUSD||0).toFixed(2)})</span>`;
+    valEl.className = 'card-value ' + c;
+    subEl.innerHTML = `<span style="opacity:0.6;font-size:10px">${d.startDate} 이후 · 실현 $${(d.realizedUSD||0).toFixed(0)} / 수수료 $${(d.commissionUSD||0).toFixed(0)} / 펀딩 $${(d.fundingUSD||0).toFixed(0)}</span>`;
+  } catch (e) {
+    valEl.textContent = '-';
+    valEl.className = 'card-value gray';
+    subEl.textContent = '조회 실패';
+  }
+}
+
 document.getElementById('refreshBtn').onclick = refresh;
 refresh();
 refreshStocks();
 refreshSpacex();
 refreshLearning();
+refreshRealizedSince();
 setInterval(refresh, 5000);
 setInterval(refreshStocks, 60_000);  // 주식 1분
 setInterval(refreshSpacex, 60_000);  // 스페이스x 1분
 setInterval(refreshLearning, 120_000);  // 학습 2분
+setInterval(refreshRealizedSince, 600_000);  // 5월 이후 실현손익 10분
 
 // ━━━ 클릭 효과 (Ripple) — 모든 버튼/카드/심볼태그에 자동 적용 ━━━
 function attachRipple(el) {
