@@ -527,12 +527,6 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="fxRate" style="font-size:22px">-</div>
     <div class="timestamp" id="fxTs">실시간</div>
   </div>
-  <!-- 상단 미니 주식: 스페이스x (실시간) -->
-  <div class="card">
-    <div class="card-label">🚀 스페이스x</div>
-    <div class="card-value" id="miniSpacex" style="font-size:20px">-</div>
-    <div class="timestamp" id="miniSpacexChg">-</div>
-  </div>
   <!-- 상단 미니 주식: SK하이닉스 -->
   <div class="card">
     <div class="card-label">🇰🇷 SK하이닉스</div>
@@ -971,17 +965,8 @@ async function refreshStocks() {
     if (!r.ok && !r.stocks) throw new Error('주식 응답 없음');
     const stocks = r.stocks || [];
 
-    // 1) 상단 미니 카드 (스페이스x + SK하이닉스)
-    const spx = stocks.find(s => s.symbol === 'DXYZ');
+    // 1) 상단 미니 카드 (SK하이닉스)
     const skh = stocks.find(s => s.symbol === '000660.KS');
-    if (spx) {
-      const cls = spx.changePct >= 0 ? 'long' : 'short';
-      const arrow = spx.changePct >= 0 ? '▲' : '▼';
-      const el = document.getElementById('miniSpacex');
-      if (el) { el.textContent = fmtStockPrice(spx); el.className = 'card-value ' + cls; }
-      const chgEl = document.getElementById('miniSpacexChg');
-      if (chgEl) { chgEl.textContent = `${arrow} ${spx.changePct.toFixed(2)}%`; chgEl.className = 'timestamp ' + cls; }
-    }
     if (skh) {
       const cls = skh.changePct >= 0 ? 'long' : 'short';
       const arrow = skh.changePct >= 0 ? '▲' : '▼';
