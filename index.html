@@ -629,6 +629,18 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   <div class="bot-list" id="botList"><div class="bot">로딩...</div></div>
 </div>
 
+<!-- 📜 봇 로그/상태 모니터 -->
+<div class="section" id="logSection">
+  <h2>📜 봇 로그 · 상태</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>봇</th><th>상태</th><th>마지막 활동</th><th>에러</th><th>최근 로그</th></tr></thead>
+      <tbody id="logTable"><tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px">로딩...</td></tr></tbody>
+    </table>
+  </div>
+  <div style="color:var(--text-dim);font-size:11px;margin-top:6px">🟢 정상 · ⚠️ 30분+ 무활동(스케줄러·명령봇은 이벤트형이라 정상) · 🔴 에러 · ⬜ 로그없음(미가동)</div>
+</div>
+
 <!-- 음성 로그 -->
 <div class="section">
   <h2>🎤 음성 명령</h2>
@@ -1108,6 +1120,34 @@ async function refreshToss() {
   }
 }
 
+// 📜 봇 로그·상태 모니터
+async function refreshLogs() {
+  const tbody = document.getElementById('logTable');
+  if (!tbody) return;
+  try {
+    const res = await fetch(API_BASE + '/api/logs', fetchOpts());
+    const d = await res.json();
+    if (!d.ok) throw new Error(d.error || '응답 없음');
+    tbody.innerHTML = (d.bots || []).map(b => {
+      let icon = '🟢', cls = 'long';
+      if (b.missing) { icon = '⬜'; cls = ''; }
+      else if (b.errorCount > 0) { icon = '🔴'; cls = 'short'; }
+      else if (b.stale) { icon = '⚠️'; cls = ''; }
+      const age = b.ageMin < 0 ? '-' : (b.ageMin < 60 ? b.ageMin + '분 전' : Math.floor(b.ageMin / 60) + '시간 전');
+      const last = (b.errorCount > 0 && b.lastError ? b.lastError : b.lastLine || '').replace(/[<>]/g, '');
+      return `<tr>
+        <td>${b.name}</td>
+        <td class="mono ${cls}">${icon}</td>
+        <td class="mono" style="font-size:11px">${age}</td>
+        <td class="mono ${b.errorCount > 0 ? 'short' : ''}">${b.errorCount || '-'}</td>
+        <td class="mono" style="font-size:10px;opacity:0.7;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${last}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff5252;padding:12px">로그 로드 실패: ${e.message}</td></tr>`;
+  }
+}
+
 document.getElementById('refreshBtn').onclick = refresh;
 refresh();
 refreshStocks();
@@ -1116,6 +1156,8 @@ refreshLearning();
 refreshRealizedSince();
 refreshToss();
 setInterval(refreshToss, 60_000);  // 토스 1분
+refreshLogs();
+setInterval(refreshLogs, 30_000);  // 봇 로그 30초
 setInterval(refresh, 5000);
 setInterval(refreshStocks, 60_000);  // 주식 1분
 setInterval(refreshSpacex, 60_000);  // 스페이스x 1분
