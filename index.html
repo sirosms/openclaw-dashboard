@@ -638,7 +638,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
       <tbody id="logTable"><tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px">로딩...</td></tr></tbody>
     </table>
   </div>
-  <div style="color:var(--text-dim);font-size:11px;margin-top:6px">🟢 정상 · ⚠️ 30분+ 무활동(스케줄러·명령봇은 이벤트형이라 정상) · 🔴 에러 · ⬜ 로그없음(미가동)</div>
+  <div style="color:var(--text-dim);font-size:11px;margin-top:6px">🟢 가동중 · ⚠️ 최근 오류(일시 네트워크 등, 회복중) · 🔴 실제 오류 · ⛔ 프로세스 중지됨</div>
 </div>
 
 <!-- 음성 로그 -->
@@ -1128,18 +1128,17 @@ async function refreshLogs() {
     const res = await fetch(API_BASE + '/api/logs', fetchOpts());
     const d = await res.json();
     if (!d.ok) throw new Error(d.error || '응답 없음');
+    const ICON = { ok: '🟢', warn: '⚠️', error: '🔴', down: '⛔', missing: '⬜' };
+    const CLS = { ok: 'long', warn: '', error: 'short', down: 'short', missing: '' };
     tbody.innerHTML = (d.bots || []).map(b => {
-      let icon = '🟢', cls = 'long';
-      if (b.missing) { icon = '⬜'; cls = ''; }
-      else if (b.errorCount > 0) { icon = '🔴'; cls = 'short'; }
-      else if (b.stale) { icon = '⚠️'; cls = ''; }
-      const age = b.ageMin < 0 ? '-' : (b.ageMin < 60 ? b.ageMin + '분 전' : Math.floor(b.ageMin / 60) + '시간 전');
-      const last = (b.errorCount > 0 && b.lastError ? b.lastError : b.lastLine || '').replace(/[<>]/g, '');
+      const stt = b.status || 'ok';
+      const age = b.status === 'down' ? '중지됨' : (b.ageMin < 0 ? '-' : (b.ageMin < 60 ? b.ageMin + '분 전' : Math.floor(b.ageMin / 60) + '시간 전'));
+      const last = (stt === 'error' && b.lastError ? b.lastError : b.lastLine || '').replace(/[<>]/g, '');
       return `<tr>
         <td>${b.name}</td>
-        <td class="mono ${cls}">${icon}</td>
+        <td class="mono ${CLS[stt] || ''}">${ICON[stt] || '🟢'}</td>
         <td class="mono" style="font-size:11px">${age}</td>
-        <td class="mono ${b.errorCount > 0 ? 'short' : ''}">${b.errorCount || '-'}</td>
+        <td class="mono" style="font-size:11px;opacity:0.7">${b.recentErrors ? '최근 ' + b.recentErrors : (b.errorCount ? '누적 ' + b.errorCount : '-')}</td>
         <td class="mono" style="font-size:10px;opacity:0.7;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${last}</td>
       </tr>`;
     }).join('');
