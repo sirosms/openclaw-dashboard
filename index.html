@@ -654,15 +654,17 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <script>
 // MSA — Frontend (GitHub Pages) ↔ Backend API
-const DEFAULT_API = 'https://frighten-spoken-duke.ngrok-free.dev';
+// 현재 백엔드 = cloudflared 터널 (ngrok 무료 쿼터 소진 ERR_NGROK_727 로 전환).
+//   ngrok 쿼터 리셋 후 되돌리려면 이 값만 ngrok 고정도메인으로 교체.
+const DEFAULT_API = 'https://belts-advice-listing-paying.trycloudflare.com';
 const params = new URLSearchParams(location.search);
 const apiFromQuery = params.get('api');
 if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
 
-// 옛날 localStorage 값 자동 무효화 — 현재 백엔드는 ngrok 고정 도메인 (옛 trycloudflare 캐시 리셋)
+// 옛/무효 localStorage 값 자동 무효화 — dev(localhost)·쿼터소진된 ngrok 도메인이 캐시에 남으면 리셋.
 let stored = localStorage.getItem('OPENCLAW_API');
-if (stored && /(localhost|127\.0|loca\.lt|trycloudflare|lhr\.life)/i.test(stored)) {
-  console.warn('[API_BASE] 옛 도메인 감지, 기본값으로 리셋:', stored);
+if (stored && /(localhost|127\.0|frighten-spoken-duke|ngrok-free)/i.test(stored)) {
+  console.warn('[API_BASE] 옛/무효 도메인 감지, 기본값으로 리셋:', stored);
   localStorage.removeItem('OPENCLAW_API');
   stored = null;
 }
@@ -720,6 +722,7 @@ const fetchOpts = (extra) => ({
 });
 
 async function refresh() {
+  if (document.hidden) return;   // 탭 비활성(화면 꺼짐/백그라운드) 시 폴링 중단 → 요청량 절감
   try {
     const res = await fetch(API_BASE + '/api/status', fetchOpts());
     if (!res.ok) throw new Error(`HTTP ${res.status} from ${API_BASE}`);
@@ -1122,6 +1125,7 @@ async function refreshToss() {
 
 // 📜 봇 로그·상태 모니터
 async function refreshLogs() {
+  if (document.hidden) return;
   const tbody = document.getElementById('logTable');
   if (!tbody) return;
   try {
@@ -1154,11 +1158,13 @@ refreshSpacex();
 refreshLearning();
 refreshRealizedSince();
 refreshToss();
-setInterval(refreshToss, 60_000);  // 토스 1분
+setInterval(refreshToss, 120_000);  // 토스 2분
+// 탭이 다시 보이면 즉시 1회 갱신
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { refresh(); refreshLogs(); } });
 refreshLogs();
 setInterval(refreshLogs, 30_000);  // 봇 로그 30초
-setInterval(refresh, 5000);
-setInterval(refreshStocks, 60_000);  // 주식 1분
+setInterval(refresh, 20_000);  // 상태 20초(요청 절감)
+setInterval(refreshStocks, 120_000);  // 주식 2분
 setInterval(refreshSpacex, 60_000);  // 스페이스x 1분
 setInterval(refreshLearning, 120_000);  // 학습 2분
 setInterval(refreshRealizedSince, 600_000);  // 5월 이후 실현손익 10분
