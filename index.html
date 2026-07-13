@@ -656,14 +656,18 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 // MSA — Frontend (GitHub Pages) ↔ Backend API
 // 현재 백엔드 = cloudflared 터널 (ngrok 무료 쿼터 소진 ERR_NGROK_727 로 전환).
 //   ngrok 쿼터 리셋 후 되돌리려면 이 값만 ngrok 고정도메인으로 교체.
-const DEFAULT_API = 'https://belts-advice-listing-paying.trycloudflare.com';
+const DEFAULT_API = 'https://oven-cursor-drill-earlier.trycloudflare.com';
 const params = new URLSearchParams(location.search);
 const apiFromQuery = params.get('api');
 if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
 
-// 옛/무효 localStorage 값 자동 무효화 — dev(localhost)·쿼터소진된 ngrok 도메인이 캐시에 남으면 리셋.
+// 옛/무효 localStorage 값 자동 무효화 — dev(localhost)·쿼터소진된 ngrok·회전된 옛 trycloudflare URL이
+// 캐시에 남으면 리셋. 퀵터널은 재시작마다 URL이 바뀌므로, DEFAULT_API와 다른 trycloudflare 값도 폐기.
 let stored = localStorage.getItem('OPENCLAW_API');
-if (stored && /(localhost|127\.0|frighten-spoken-duke|ngrok-free)/i.test(stored)) {
+if (stored && (
+  /(localhost|127\.0|frighten-spoken-duke|ngrok-free)/i.test(stored) ||
+  (/trycloudflare\.com/i.test(stored) && stored.replace(/\/$/, '') !== DEFAULT_API.replace(/\/$/, ''))
+)) {
   console.warn('[API_BASE] 옛/무효 도메인 감지, 기본값으로 리셋:', stored);
   localStorage.removeItem('OPENCLAW_API');
   stored = null;
