@@ -432,11 +432,12 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   #bnPnlCard       { order: 2 !important; }   /* 🟡 바이낸스 PnL */
   #upPnlCard       { order: 3 !important; }   /* 🔵 업비트 PnL */
   .return-priority { order: 4 !important; }   /* 📈 수익률 (ROI) — 업비트 PnL 다음 */
-  #mrCard          { order: 5 !important; }   /* ⚡ Margin Ratio (위험 알림) */
-  #spacexCard      { order: 6 !important; }   /* 🚀 스페이스x — 총자산 바로 위 */
-  .card.hero       { order: 7 !important; }   /* 💰 총 자산 — 가장 마지막 */
+  #tossCard        { order: 5 !important; }   /* 🟦 토스증권 수익률 — 수익률 바로 아래(최상단) */
+  #mrCard          { order: 6 !important; }   /* ⚡ Margin Ratio (위험 알림) */
+  #spacexCard      { order: 7 !important; }   /* 🚀 스페이스x — 총자산 바로 위 */
+  .card.hero       { order: 8 !important; }   /* 💰 총 자산 — 가장 마지막 */
   /* 나머지 (바이낸스 잔고, 업비트 잔고, 환율, 주식 미니카드 등) */
-  .summary .card:not(.pnl-priority):not(.return-priority):not(.hero):not(#mrCard):not(#bnPnlCard):not(#upPnlCard):not(#spacexCard) {
+  .summary .card:not(.pnl-priority):not(.return-priority):not(.hero):not(#mrCard):not(#bnPnlCard):not(#upPnlCard):not(#spacexCard):not(#tossCard) {
     order: 10;
   }
 }
@@ -521,9 +522,9 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="timestamp" id="upSplit">-</div>
     <div class="timestamp" id="upTotalPnl" style="font-size:10px">-</div>
   </div>
-  <!-- 5-1. 토스증권 (해외주식) -->
-  <div class="card">
-    <div class="card-label">🟦 토스증권</div>
+  <!-- 5-1. 토스증권 (해외주식) — 모바일 최상단 근처 노출 -->
+  <div class="card" id="tossCard">
+    <div class="card-label">🟦 토스증권 수익률</div>
     <div class="card-value" id="tossTotal">-</div>
     <div class="timestamp" id="tossReturn">-</div>
     <div class="timestamp" id="tossTotalPnl" style="font-size:10px">-</div>
