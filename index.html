@@ -428,6 +428,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
   /* ━━━ 모바일 전용: 바이낸스 앱 스타일 — PnL/ROI 최상단 정렬 ━━━ */
   .summary { display: flex !important; flex-direction: column !important; gap: 8px; }
+  #grandAllCard    { order: 0 !important; }   /* 🏆 총자산 (전체합산) — 제일 상단 */
   .pnl-priority    { order: 1 !important; }   /* 💹 미실현 PnL (통합) */
   #bnPnlCard       { order: 2 !important; }   /* 🟡 바이낸스 PnL */
   #upPnlCard       { order: 3 !important; }   /* 🔵 업비트 PnL */
@@ -462,6 +463,14 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <!-- 통합 자산 요약 (모바일에서 PnL/수익률 우선 노출) -->
 <div class="summary">
+  <!-- 0. 전체 총자산 (모든 자산 합산 · 제일 상단) -->
+  <div class="card hero" id="grandAllCard">
+    <div class="card-label">🏆 총자산 (전체합산)</div>
+    <div class="card-value" id="grandAllTotal">-</div>
+    <div class="timestamp" id="grandAllUSD">-</div>
+    <div class="timestamp" id="grandAllReturn" style="font-size:11px">-</div>
+    <div class="timestamp" style="font-size:9px;opacity:0.5">바이낸스 + 업비트 + 토스증권 + 스페이스x</div>
+  </div>
   <!-- 1. 미실현 PnL (통합 + 거래소별 분리) -->
   <div class="card pnl-priority">
     <div class="card-label">💹 미실현 PnL (통합)</div>
@@ -500,9 +509,9 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="spacexValue" style="font-size:20px">-</div>
     <div class="timestamp" id="spacexSub">-</div>
   </div>
-  <!-- 3. 총 자산 -->
+  <!-- 3. 거래소 자산 (바이낸스+업비트 소계) -->
   <div class="card hero">
-    <div class="card-label">💰 총 자산</div>
+    <div class="card-label">💰 거래소자산 (바이낸스+업비트)</div>
     <div class="card-value" id="grandTotal">-</div>
     <div class="timestamp" id="grandTotalUSD">-</div>
     <div class="timestamp" id="grandTotalPnl" style="font-size:10px">-</div>
@@ -695,6 +704,34 @@ const fmt = {
 const cls = (n) => n>0 ? 'green' : n<0 ? 'red' : 'gray';
 let LAST_USDKRW = 1476;  // 보유 주식 KRW 환산용 (refresh마다 갱신)
 
+// 🏆 전체 총자산 합산용 소스별 값 — 각 refresh(코어/토스/스페이스x)가 비동기로 갱신 → renderGrandAll() 재계산
+const ASSET = {
+  coreKRW: 0, coreProfitKRW: 0, coreBaseKRW: 0,   // 바이낸스+업비트: 평가액 + 보유포지션 평가손익(원가 대비)
+  tossKRW: 0, tossProfitKRW: 0, tossBaseKRW: 0,   // 토스증권: 전체잔고 + 매입원가 대비 평가손익
+  spacexKRW: 0,                                    // 스페이스x: 평가액 (원가 미보유 → 수익률 계산 제외)
+};
+function renderGrandAll() {
+  const totalKRW = ASSET.coreKRW + ASSET.tossKRW + ASSET.spacexKRW;
+  const el = document.getElementById('grandAllTotal');
+  if (el) el.textContent = fmt.krw(totalKRW);
+  const usdEl = document.getElementById('grandAllUSD');
+  if (usdEl) usdEl.textContent = fmt.usd(totalKRW / (LAST_USDKRW || 1476)) + ' USDT';
+  // 합산 수익률 = (코어 보유포지션 평가손익 + 토스 평가손익) / (각 매입원가 합) · 스페이스x는 원가 없어 제외
+  const profit = ASSET.coreProfitKRW + ASSET.tossProfitKRW;
+  const base = ASSET.coreBaseKRW + ASSET.tossBaseKRW;
+  const rEl = document.getElementById('grandAllReturn');
+  if (rEl) {
+    if (!base) { rEl.textContent = '수익률 계산 대기'; }
+    else {
+      const pct = (profit / base) * 100;
+      const c = pct >= 0 ? 'long' : 'short';
+      rEl.innerHTML = `<span class="${c}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span> ` +
+        `<span class="${c}" style="opacity:0.85">${profit >= 0 ? '+' : ''}${fmt.krw(profit)}</span> ` +
+        `<span style="opacity:0.5">· 보유원가 ${fmt.krw(base)} 대비</span>`;
+    }
+  }
+}
+
 // 봇 파일명 → 한글 이름
 const BOT_NAMES = {
   server: '🌐 대시보드 서버',
@@ -749,6 +786,11 @@ async function refresh() {
     const grandTotal = (summary.grandTotalKRW || 0) + upbitStaking;
     document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
     document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / _usdKrwFx) + ' USDT';
+    // 🏆 전체 총자산 합산 — 코어(거래소) 평가액 + 보유포지션 평가손익(토스와 동일 기준: 원가 대비)
+    ASSET.coreKRW = grandTotal;
+    ASSET.coreProfitKRW = summary.unrealizedKRW || 0;
+    ASSET.coreBaseKRW = summary.unrealizedBaseKRW || 0;
+    renderGrandAll();
 
     // 수익률 — 서버 자동계산 (수동입력 무시). ① 누적(입출금 총입금 대비) ② 미실현(보유 포지션)
     const returnPctEl = document.getElementById('returnPct');
@@ -1127,6 +1169,11 @@ async function refreshToss() {
       if (rEl) rEl.innerHTML = `<span class="${rc}">${rate >= 0 ? '+' : ''}${rate.toFixed(2)}%</span> <span style="opacity:0.6">· $${(valKRW / fx).toFixed(0)}</span>`;
       const pEl = document.getElementById('tossTotalPnl');
       if (pEl) pEl.innerHTML = `<span class="${rc}">${pnlKRW >= 0 ? '+' : ''}${fmt.krw(pnlKRW)}</span>`;
+      // 🏆 전체 총자산 합산 — 토스 전체잔고·평가손익 반영
+      ASSET.tossKRW = valKRW;
+      ASSET.tossProfitKRW = pnlKRW;
+      ASSET.tossBaseKRW = purKRW;
+      renderGrandAll();
     }
     if (!items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:16px">보유 종목 없음</td></tr>'; return; }
     const rows = items.map(it => {
@@ -1412,6 +1459,9 @@ async function refreshSpacex() {
   // 보조: 보유수량 × 총자산
   subEl.className = 'timestamp';
   subEl.innerHTML = `${fmt.qty(qty)}주 · 총자산 ${fmt.krw(valueKRW)} <span style="opacity:0.6">($${valueUSD.toFixed(2)})</span>`;
+  // 🏆 전체 총자산 합산 — 스페이스x 평가액 반영 (원가 미보유 → 수익률 계산엔 미포함)
+  ASSET.spacexKRW = valueKRW;
+  renderGrandAll();
 }
 
 function addVoiceLog(msg, type) {
