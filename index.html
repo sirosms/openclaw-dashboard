@@ -469,7 +469,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="card-value" id="grandAllTotal">-</div>
     <div class="timestamp" id="grandAllUSD">-</div>
     <div class="timestamp" id="grandAllReturn" style="font-size:11px">-</div>
-    <div class="timestamp" style="font-size:9px;opacity:0.5">바이낸스 + 업비트 + 토스증권 + 스페이스x</div>
+    <div id="grandAllBreakdown" style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;font-size:11px;text-align:left"></div>
   </div>
   <!-- 1. 미실현 PnL (통합 + 거래소별 분리) -->
   <div class="card pnl-priority">
@@ -707,6 +707,8 @@ let LAST_USDKRW = 1476;  // 보유 주식 KRW 환산용 (refresh마다 갱신)
 // 🏆 전체 총자산 합산용 소스별 값 — 각 refresh(코어/토스/스페이스x)가 비동기로 갱신 → renderGrandAll() 재계산
 const ASSET = {
   coreKRW: 0, coreProfitKRW: 0, coreBaseKRW: 0,   // 바이낸스+업비트: 평가액 + 보유포지션 평가손익(원가 대비)
+  bnKRW: 0, bnProfitKRW: 0, bnPct: null,          // 바이낸스: 총액 · 미실현손익 · 마진 대비 수익률
+  upKRW: 0, upProfitKRW: 0, upPct: null,          // 업비트: 총액 · 미실현손익 · 투자 대비 수익률
   tossKRW: 0, tossProfitKRW: 0, tossBaseKRW: 0,   // 토스증권: 전체잔고 + 매입원가 대비 평가손익
   spacexKRW: 0,                                    // 스페이스x: 평가액 (원가 미보유 → 수익률 계산 제외)
 };
@@ -729,6 +731,28 @@ function renderGrandAll() {
         `<span class="${c}" style="opacity:0.85">${profit >= 0 ? '+' : ''}${fmt.krw(profit)}</span> ` +
         `<span style="opacity:0.5">· 보유원가 ${fmt.krw(base)} 대비</span>`;
     }
+  }
+  // 소스별 브레이크다운 — 합산 금액 + 각각(바이낸스·업비트·토스)의 수익률
+  const bd = document.getElementById('grandAllBreakdown');
+  if (bd) {
+    const row = (label, krw, pct, profit) => {
+      let right;
+      if (pct == null) right = `<span style="opacity:0.4">수익률 -</span>`;
+      else {
+        const c = pct >= 0 ? 'long' : 'short';
+        right = `<span class="${c}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>` +
+          (profit != null ? ` <span class="${c}" style="opacity:0.7;font-size:10px">${profit >= 0 ? '+' : ''}${fmt.krw(profit)}</span>` : '');
+      }
+      return `<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0">` +
+        `<span style="opacity:0.85">${label}</span>` +
+        `<span><span class="mono">${fmt.krw(krw)}</span> &nbsp;${right}</span></div>`;
+    };
+    const tossPct = ASSET.tossBaseKRW ? (ASSET.tossProfitKRW / ASSET.tossBaseKRW) * 100 : null;
+    bd.innerHTML =
+      row('🟡 바이낸스', ASSET.bnKRW, ASSET.bnPct, ASSET.bnProfitKRW) +
+      row('🔵 업비트', ASSET.upKRW, ASSET.upPct, ASSET.upProfitKRW) +
+      row('🟦 토스증권', ASSET.tossKRW, tossPct, ASSET.tossProfitKRW) +
+      row('🚀 스페이스x', ASSET.spacexKRW, null, null);
   }
 }
 
@@ -790,6 +814,8 @@ async function refresh() {
     ASSET.coreKRW = grandTotal;
     ASSET.coreProfitKRW = summary.unrealizedKRW || 0;
     ASSET.coreBaseKRW = summary.unrealizedBaseKRW || 0;
+    ASSET.bnKRW = binance.totalKRW || 0;
+    ASSET.upKRW = (upbit.totalKRW || 0) + upbitStaking;
     renderGrandAll();
 
     // 수익률 — 서버 자동계산 (수동입력 무시). ① 누적(입출금 총입금 대비) ② 미실현(보유 포지션)
@@ -920,6 +946,12 @@ async function refresh() {
     const totalCapitalUSD = bnMargin + (upInvest / usdkrwReal);
     const bnPctVal = bnMargin > 0 ? (summary.bnPnl / bnMargin) * 100 : 0;
     const upPctVal = upInvest > 0 ? (summary.upPnlKRW / upInvest) * 100 : 0;
+    // 🏆 총자산 브레이크다운 — 바이낸스/업비트 수익률(미실현·마진/투자 대비) 반영
+    ASSET.bnPct = bnMargin > 0 ? bnPctVal : null;
+    ASSET.bnProfitKRW = _bnPnlKRW;
+    ASSET.upPct = upInvest > 0 ? upPctVal : null;
+    ASSET.upProfitKRW = _upPnlKRW;
+    renderGrandAll();
     const totalPctVal = totalCapitalUSD > 0 ? (summary.netPnlUSD / totalCapitalUSD) * 100 : 0;
 
     // 통합 PnL — 원화를 메인으로
