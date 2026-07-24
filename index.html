@@ -521,6 +521,13 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="timestamp" id="upSplit">-</div>
     <div class="timestamp" id="upTotalPnl" style="font-size:10px">-</div>
   </div>
+  <!-- 5-1. 토스증권 (해외주식) -->
+  <div class="card">
+    <div class="card-label">🟦 토스증권</div>
+    <div class="card-value" id="tossTotal">-</div>
+    <div class="timestamp" id="tossReturn">-</div>
+    <div class="timestamp" id="tossTotalPnl" style="font-size:10px">-</div>
+  </div>
   <!-- 환율 카드 -->
   <div class="card">
     <div class="card-label">💱 환율 USD/KRW</div>
@@ -1101,6 +1108,17 @@ async function refreshToss() {
     if (!d.ok) throw new Error(d.error || '응답 없음');
     const fx = d.usdKrw || LAST_USDKRW || 1476;
     const items = d.items || [];
+    // 상단 요약 카드 — 토스 평가금 + 수익률(누적) + 손익
+    const tEl = document.getElementById('tossTotal');
+    if (tEl) {
+      const rate = (d.totalPnlRate || 0) * 100;
+      const rc = rate >= 0 ? 'long' : 'short';
+      tEl.textContent = fmt.krw((d.totalValueUSD || 0) * fx);
+      const rEl = document.getElementById('tossReturn');
+      if (rEl) rEl.innerHTML = `<span class="${rc}">${rate >= 0 ? '+' : ''}${rate.toFixed(2)}%</span> <span style="opacity:0.6">· $${(d.totalValueUSD || 0).toFixed(0)}</span>`;
+      const pEl = document.getElementById('tossTotalPnl');
+      if (pEl) pEl.innerHTML = `<span class="${rc}">${(d.totalPnlUSD || 0) >= 0 ? '+' : ''}${fmt.krw((d.totalPnlUSD || 0) * fx)}</span>`;
+    }
     if (!items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:16px">보유 종목 없음</td></tr>'; return; }
     const rows = items.map(it => {
       const c = it.pnlRate >= 0 ? 'long' : 'short';
@@ -1124,6 +1142,7 @@ async function refreshToss() {
     tbody.innerHTML = rows + total;
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ff5252;padding:16px">토스 로드 실패: ${e.message}</td></tr>`;
+    const tEl = document.getElementById('tossTotal'); if (tEl) tEl.textContent = '조회 실패';
   }
 }
 
