@@ -493,7 +493,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   <!-- 2. 수익률 (모바일 2번째) -->
   <div class="card return-priority">
     <div class="card-label">📈 수익률 (자동계산)</div>
-    <div style="font-size:10px;opacity:0.6;margin-top:2px">누적 · 입출금(총입금) 대비</div>
+    <div style="font-size:10px;opacity:0.6;margin-top:2px">누적 · 순입금(입금−출금) 대비</div>
     <div class="card-value" id="returnPct">-</div>
     <div class="timestamp" id="profitKRW">-</div>
     <div style="font-size:10px;opacity:0.6;margin-top:8px;border-top:1px solid var(--border);padding-top:6px">미실현 · 보유 포지션</div>
@@ -673,7 +673,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 // MSA — Frontend (GitHub Pages) ↔ Backend API
 // 현재 백엔드 = cloudflared 터널 (ngrok 무료 쿼터 소진 ERR_NGROK_727 로 전환).
 //   ngrok 쿼터 리셋 후 되돌리려면 이 값만 ngrok 고정도메인으로 교체.
-const DEFAULT_API = 'https://describe-survivor-merchant-terminals.trycloudflare.com';
+const DEFAULT_API = 'https://girlfriend-burns-which-correct.trycloudflare.com';
 const params = new URLSearchParams(location.search);
 const apiFromQuery = params.get('api');
 if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
@@ -713,7 +713,8 @@ const ASSET = {
   spacexKRW: 0,                                    // 스페이스x: 평가액 (원가 미보유 → 수익률 계산 제외)
 };
 function renderGrandAll() {
-  const totalKRW = ASSET.coreKRW + ASSET.tossKRW + ASSET.spacexKRW;
+  // 거래소(바이낸스+업비트) + 토스 전체잔고 + 스페이스x. coreKRW엔 서버 토스(USD종목만)가 섞여있어 이중합산되므로 bn/up만 사용
+  const totalKRW = ASSET.bnKRW + ASSET.upKRW + ASSET.tossKRW + ASSET.spacexKRW;
   const el = document.getElementById('grandAllTotal');
   if (el) el.textContent = fmt.krw(totalKRW);
   const usdEl = document.getElementById('grandAllUSD');
@@ -830,11 +831,14 @@ async function refresh() {
       returnPctEl.textContent = fmt.pct(rPct);
       returnPctEl.className = 'card-value ' + cls(rPct);
       profitKRWEl.innerHTML = (profit>=0?'+':'') + fmt.krw(profit) +
-        '<br><span style="opacity:0.6;font-size:10px">총입금 ' + fmt.krw(summary.totalDepositKRW || 0) + ' 대비</span>';
+        '<br><span style="opacity:0.6;font-size:10px">순입금 ' + fmt.krw(summary.netDepositKRW || 0) +
+        ' 대비 (입금 ' + fmt.krw(summary.totalDepositKRW || 0) + ' − 출금 ' + fmt.krw(summary.totalWithdrawKRW || 0) + ')</span>';
     } else {
-      returnPctEl.textContent = '-';
+      returnPctEl.textContent = summary.depositError ? '조회 실패' : '-';
       returnPctEl.className = 'card-value gray';
-      profitKRWEl.textContent = '입출금 데이터 없음';
+      profitKRWEl.innerHTML = summary.depositError
+        ? '<span style="color:#ff5252">⚠️ 업비트 입출금 조회 실패<br><span style="font-size:10px">' + summary.depositError + ' · IP 인증 필요</span></span>'
+        : '입출금 데이터 없음';
     }
     // ② 미실현(보유 포지션)
     if (summary.unrealizedPct != null) {
