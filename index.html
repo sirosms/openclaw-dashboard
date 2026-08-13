@@ -793,7 +793,9 @@ const BOT_NAMES = {
 const botKo = (file) => BOT_NAMES[(String(file).match(/([A-Za-z]+)\.ts$/) || [])[1]] || '';
 
 // ngrok 무료 플랜 경고 페이지 우회 + 기타 터널 호환
+// signal: 15초 타임아웃 — 터널이 멈추면 요청이 영원히 매달려 화면이 굳던 문제 방지 (다음 주기가 재시도)
 const fetchOpts = (extra) => ({
+  signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(15000) : undefined,
   headers: {
     'ngrok-skip-browser-warning': 'true',
     'bypass-tunnel-reminder': 'true',
