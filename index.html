@@ -1282,18 +1282,22 @@ async function refreshScalping() {
   try {
     const r = await fetch(API_BASE + '/api/scalping', fetchOpts()).then(x => x.json());
     if (!r.ok) throw new Error(r.error || '응답 없음');
-    const coins = r.coins || [], stocks = r.stocks || [];
-    const total = coins.length + stocks.length;
+    const coins = r.coins || [], stocks = r.stocks || [], futures = r.futures || [];
+    const total = futures.length + stocks.length;
     cntEl.innerHTML = total > 0
-      ? `<span class="long">${total}건 가동중</span> <span style="font-size:12px;opacity:0.6">코인 ${coins.length} · 주식 ${stocks.length}</span>`
+      ? `<span class="long">${total}건</span> <span style="font-size:12px;opacity:0.6">선물 ${futures.length} (봇 ${coins.length}) · 주식 ${stocks.length}</span>`
       : `<span style="opacity:0.5">없음</span>`;
     const rows = [];
-    for (const c of coins) {
-      const age = Math.floor((Date.now() - (c.startedAt || Date.now())) / 60000);
-      const sc = c.side === 'LONG' ? 'long' : 'short';
+    // 바이낸스 선물 포지션 — ScalpBot 가동 중이면 🤖 표시 + TP/SL 병기
+    for (const f of futures) {
+      const sc = f.side === 'LONG' ? 'long' : 'short';
+      const bot = coins.find(c => c.symbol === f.symbol);
+      const pc = f.pnl >= 0 ? 'long' : 'short';
+      const fmt$ = (n) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 4 });
       rows.push(`<div style="display:flex;justify-content:space-between;gap:6px;padding:2px 0">` +
-        `<span>🪙 ${c.symbol.replace('USDT','')} <span class="${sc}">${c.side}</span> ${c.lev ? c.lev + 'x' : ''}</span>` +
-        `<span style="opacity:0.75">@$${Number(c.entry).toLocaleString()} · TP $${Number(c.tp1).toLocaleString(undefined,{maximumFractionDigits:4})} / SL $${Number(c.sl).toLocaleString(undefined,{maximumFractionDigits:4})} · ${age}분</span></div>`);
+        `<span>${bot ? '🤖' : '🟡'} ${f.symbol.replace('USDT','')} <span class="${sc}">${f.side}</span> ${f.lev}x</span>` +
+        `<span style="opacity:0.85">@$${fmt$(f.entry)} <span class="${pc}">${f.pnl >= 0 ? '+' : ''}$${f.pnl.toFixed(2)} (${f.pnlPct >= 0 ? '+' : ''}${f.pnlPct.toFixed(1)}%)</span>` +
+        (bot ? ` · TP $${fmt$(bot.tp1)}/SL $${fmt$(bot.sl)}` : '') + `</span></div>`);
     }
     for (const s of stocks) {
       const nm = KR_NAMES[s.code] || s.name || s.code;
