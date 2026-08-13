@@ -429,6 +429,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   /* ━━━ 모바일 전용: 바이낸스 앱 스타일 — PnL/ROI 최상단 정렬 ━━━ */
   .summary { display: flex !important; flex-direction: column !important; gap: 8px; }
   #grandAllCard    { order: 0 !important; }   /* 🏆 총자산 (전체합산) — 제일 상단 */
+  #scalpingCard    { order: 0 !important; }   /* ⚡ 스캘핑 현황 — 총자산 바로 다음(DOM 순서로 결정) */
   .pnl-priority    { order: 1 !important; }   /* 💹 미실현 PnL (통합) */
   #bnPnlCard       { order: 2 !important; }   /* 🟡 바이낸스 PnL */
   #upPnlCard       { order: 3 !important; }   /* 🔵 업비트 PnL */
@@ -470,6 +471,12 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     <div class="timestamp" id="grandAllUSD">-</div>
     <div class="timestamp" id="grandAllReturn" style="font-size:11px">-</div>
     <div id="grandAllBreakdown" style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;font-size:11px;text-align:left"></div>
+  </div>
+  <!-- 0-1. 스캘핑 현황 (코인 ScalpBot + 주식 파이썬봇) — 총자산 바로 아래 -->
+  <div class="card" id="scalpingCard">
+    <div class="card-label">⚡ 스캘핑 현황</div>
+    <div class="card-value" id="scalpingCount" style="font-size:20px">-</div>
+    <div id="scalpingList" style="margin-top:6px;font-size:11px;text-align:left"></div>
   </div>
   <!-- 1. 미실현 PnL (통합 + 거래소별 분리) -->
   <div class="card pnl-priority">
@@ -1266,6 +1273,41 @@ async function refreshLogs() {
   }
 }
 
+// ⚡ 스캘핑 현황 — 코인(ScalpBot) + 주식(파이썬봇) 통합
+const KR_NAMES = { '010140': '삼성중공업', '005930': '삼성전자', '000660': 'SK하이닉스' };
+async function refreshScalping() {
+  const cntEl = document.getElementById('scalpingCount');
+  const listEl = document.getElementById('scalpingList');
+  if (!cntEl || !listEl) return;
+  try {
+    const r = await fetch(API_BASE + '/api/scalping', fetchOpts()).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '응답 없음');
+    const coins = r.coins || [], stocks = r.stocks || [];
+    const total = coins.length + stocks.length;
+    cntEl.innerHTML = total > 0
+      ? `<span class="long">${total}건 가동중</span> <span style="font-size:12px;opacity:0.6">코인 ${coins.length} · 주식 ${stocks.length}</span>`
+      : `<span style="opacity:0.5">없음</span>`;
+    const rows = [];
+    for (const c of coins) {
+      const age = Math.floor((Date.now() - (c.startedAt || Date.now())) / 60000);
+      const sc = c.side === 'LONG' ? 'long' : 'short';
+      rows.push(`<div style="display:flex;justify-content:space-between;gap:6px;padding:2px 0">` +
+        `<span>🪙 ${c.symbol.replace('USDT','')} <span class="${sc}">${c.side}</span> ${c.lev ? c.lev + 'x' : ''}</span>` +
+        `<span style="opacity:0.75">@$${Number(c.entry).toLocaleString()} · TP $${Number(c.tp1).toLocaleString(undefined,{maximumFractionDigits:4})} / SL $${Number(c.sl).toLocaleString(undefined,{maximumFractionDigits:4})} · ${age}분</span></div>`);
+    }
+    for (const s of stocks) {
+      const nm = KR_NAMES[s.code] || s.name || s.code;
+      rows.push(`<div style="display:flex;justify-content:space-between;gap:6px;padding:2px 0">` +
+        `<span>${s.market === 'KR' ? '🇰🇷' : '🇺🇸'} ${nm}</span>` +
+        `<span style="opacity:0.75">${s.qty}주 @ ${s.market === 'KR' ? '₩' + Number(s.buyPrice).toLocaleString() : '$' + Number(s.buyPrice).toLocaleString()}</span></div>`);
+    }
+    listEl.innerHTML = rows.join('') || '<span style="opacity:0.4">가동 중인 스캘핑 없음 — /scalp 명령 또는 주식봇 진입 시 표시</span>';
+  } catch (e) {
+    cntEl.textContent = '조회 실패';
+    listEl.innerHTML = `<span style="opacity:0.5">${e.message}</span>`;
+  }
+}
+
 document.getElementById('refreshBtn').onclick = refresh;
 refresh();
 refreshStocks();
@@ -1274,6 +1316,8 @@ refreshLearning();
 refreshRealizedSince();
 refreshToss();
 setInterval(refreshToss, 120_000);  // 토스 2분
+refreshScalping();
+setInterval(refreshScalping, 30_000);  // 스캘핑 현황 30초
 // 탭이 다시 보이면 즉시 1회 갱신
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { refresh(); refreshLogs(); } });
 refreshLogs();
