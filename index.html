@@ -1308,7 +1308,18 @@ async function refreshScalping() {
   }
 }
 
-document.getElementById('refreshBtn').onclick = refresh;
+// 🔄 새로고침 버튼 — 전체 섹션 일괄 갱신 + 시각 피드백 (기존엔 요약만 갱신돼 "안 눌리는 것처럼" 보였음)
+const _refreshBtn = document.getElementById('refreshBtn');
+if (_refreshBtn) _refreshBtn.onclick = async () => {
+  _refreshBtn.disabled = true;
+  _refreshBtn.textContent = '⏳';
+  // 각 섹션 갱신을 병렬 실행 — 하나 실패해도 나머지는 진행
+  const jobs = [refresh, refreshToss, refreshScalping, refreshStocks, refreshSpacex, refreshLogs, refreshLearning]
+    .map(f => { try { return Promise.resolve(f()).catch(() => {}); } catch { return Promise.resolve(); } });
+  await Promise.all(jobs);
+  _refreshBtn.textContent = '✅';
+  setTimeout(() => { _refreshBtn.textContent = '🔄'; _refreshBtn.disabled = false; }, 800);
+};
 refresh();
 refreshStocks();
 refreshSpacex();
