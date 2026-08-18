@@ -1307,10 +1307,12 @@ async function refreshScalping() {
         `<span>${s.market === 'KR' ? '🇰🇷' : '🇺🇸'} ${nm}</span>` +
         `<span style="opacity:0.75">${s.qty}주 @ ${s.market === 'KR' ? '₩' + Number(s.buyPrice).toLocaleString() : '$' + Number(s.buyPrice).toLocaleString()}</span></div>`);
     }
-    listEl.innerHTML = rows.join('') || '<span style="opacity:0.4">가동 중인 스캘핑 없음 — /scalp 명령 또는 주식봇 진입 시 표시</span>';
+    listEl.innerHTML = (rows.join('') || '<span style="opacity:0.4">가동 중인 스캘핑 없음 — /scalp 명령 또는 주식봇 진입 시 표시</span>') +
+      `<div style="opacity:0.4;font-size:9px;margin-top:3px">갱신 ${new Date().toLocaleTimeString('ko-KR')}</div>`;
+    window.__scalpingOkAt = Date.now();   // 워치독용 성공 시각
   } catch (e) {
     cntEl.textContent = '조회 실패';
-    listEl.innerHTML = `<span style="opacity:0.5">${e.message}</span>`;
+    listEl.innerHTML = `<span style="opacity:0.5">${e.message} · ${new Date().toLocaleTimeString('ko-KR')}</span>`;
   }
 }
 
@@ -1358,7 +1360,14 @@ setInterval(refreshToss, 120_000);  // 토스 2분
 refreshScalping();
 setInterval(refreshScalping, 30_000);  // 스캘핑 현황 30초
 // 탭이 다시 보이면 즉시 1회 갱신
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { refresh(); refreshLogs(); } });
+// 탭 복귀 시 전 섹션 즉시 갱신 — 모바일이 백그라운드 타이머를 죽여 옛 데이터가 화면에 굳는 문제 방지
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { refresh(); refreshLogs(); refreshScalping(); refreshToss(); refreshSpacex(); }
+});
+// 워치독: 스캘핑 갱신이 3분 넘게 성공 못 하면 강제 재시도 (인터벌이 조용히 죽는 케이스 방어)
+setInterval(() => {
+  if (Date.now() - (window.__scalpingOkAt || 0) > 3 * 60 * 1000 && !document.hidden) refreshScalping();
+}, 60 * 1000);
 refreshLogs();
 setInterval(refreshLogs, 30_000);  // 봇 로그 30초
 setInterval(refresh, 20_000);  // 상태 20초(요청 절감)
