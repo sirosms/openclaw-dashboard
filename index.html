@@ -796,6 +796,9 @@ const botKo = (file) => BOT_NAMES[(String(file).match(/([A-Za-z]+)\.ts$/) || [])
 // signal: 15초 타임아웃 — 터널이 멈추면 요청이 영원히 매달려 화면이 굳던 문제 방지 (다음 주기가 재시도)
 const fetchOpts = (extra) => ({
   signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(15000) : undefined,
+  // no-store: 브라우저 HTTP 캐시 완전 우회. 서버가 Cache-Control 없이 ETag만 내려주던 시절
+  // Safari(iOS)가 휴리스틱 캐시로 옛 응답을 재사용해 새로고침해도 값이 안 바뀌던 문제 방지.
+  cache: 'no-store',
   headers: {
     'ngrok-skip-browser-warning': 'true',
     'bypass-tunnel-reminder': 'true',
