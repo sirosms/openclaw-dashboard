@@ -717,18 +717,19 @@ const ASSET = {
   bnKRW: 0, bnProfitKRW: 0, bnPct: null,          // 바이낸스: 총액 · 미실현손익 · 마진 대비 수익률
   upKRW: 0, upProfitKRW: 0, upPct: null,          // 업비트: 총액 · 미실현손익 · 투자 대비 수익률
   tossKRW: 0, tossProfitKRW: 0, tossBaseKRW: 0,   // 토스증권: 전체잔고 + 매입원가 대비 평가손익
+  bhOn: false, bhKRW: 0, bhProfitKRW: 0, bhBaseKRW: 0,  // 빗썸(잔고 조회 전용): 총액 + 평단 대비 평가손익
   spacexKRW: 0,                                    // 스페이스x: 평가액 (원가 미보유 → 수익률 계산 제외)
 };
 function renderGrandAll() {
   // 거래소(바이낸스+업비트) + 토스 전체잔고 + 스페이스x. coreKRW엔 서버 토스(USD종목만)가 섞여있어 이중합산되므로 bn/up만 사용
-  const totalKRW = ASSET.bnKRW + ASSET.upKRW + ASSET.tossKRW + ASSET.spacexKRW;
+  const totalKRW = ASSET.bnKRW + ASSET.upKRW + ASSET.tossKRW + ASSET.spacexKRW + ASSET.bhKRW;
   const el = document.getElementById('grandAllTotal');
   if (el) el.textContent = fmt.krw(totalKRW);
   const usdEl = document.getElementById('grandAllUSD');
   if (usdEl) usdEl.textContent = fmt.usd(totalKRW / (LAST_USDKRW || 1476)) + ' USDT';
   // 합산 수익률 = (코어 보유포지션 평가손익 + 토스 평가손익) / (각 매입원가 합) · 스페이스x는 원가 없어 제외
-  const profit = ASSET.coreProfitKRW + ASSET.tossProfitKRW;
-  const base = ASSET.coreBaseKRW + ASSET.tossBaseKRW;
+  const profit = ASSET.coreProfitKRW + ASSET.tossProfitKRW + ASSET.bhProfitKRW;
+  const base = ASSET.coreBaseKRW + ASSET.tossBaseKRW + ASSET.bhBaseKRW;
   const rEl = document.getElementById('grandAllReturn');
   if (rEl) {
     if (!base) { rEl.textContent = '수익률 계산 대기'; }
@@ -756,9 +757,11 @@ function renderGrandAll() {
         `<span><span class="mono">${fmt.krw(krw)}</span> &nbsp;${right}</span></div>`;
     };
     const tossPct = ASSET.tossBaseKRW ? (ASSET.tossProfitKRW / ASSET.tossBaseKRW) * 100 : null;
+    const bhPct = ASSET.bhBaseKRW ? (ASSET.bhProfitKRW / ASSET.bhBaseKRW) * 100 : null;
     bd.innerHTML =
       row('🟡 바이낸스', ASSET.bnKRW, ASSET.bnPct, ASSET.bnProfitKRW) +
       row('🔵 업비트', ASSET.upKRW, ASSET.upPct, ASSET.upProfitKRW) +
+      (ASSET.bhOn ? row('🟠 빗썸', ASSET.bhKRW, bhPct, ASSET.bhProfitKRW) : '') +
       row('🟦 토스증권', ASSET.tossKRW, tossPct, ASSET.tossProfitKRW) +
       row('🚀 스페이스x', ASSET.spacexKRW, null, null);
   }
@@ -829,6 +832,12 @@ async function refresh() {
     ASSET.coreBaseKRW = summary.unrealizedBaseKRW || 0;
     ASSET.bnKRW = binance.totalKRW || 0;
     ASSET.upKRW = (upbit.totalKRW || 0) + upbitStaking;
+    // 빗썸 — 서버가 키 있을 때만 enabled. 원가는 평단×수량(시세 있는 코인만)으로 계산해 수익률 기준을 토스와 맞춘다
+    const bh = r.bithumb || {};
+    ASSET.bhOn = !!(bh.enabled && !bh.error);
+    ASSET.bhKRW = ASSET.bhOn ? (bh.totalKRW || 0) : 0;
+    ASSET.bhProfitKRW = ASSET.bhOn ? (bh.pnlKRW || 0) : 0;
+    ASSET.bhBaseKRW = ASSET.bhOn ? (bh.holdings || []).filter(h => h.currentPrice != null).reduce((a, h) => a + h.qty * h.avgPrice, 0) : 0;
     renderGrandAll();
 
     // 수익률 — 서버 자동계산 (수동입력 무시). ① 누적(입출금 총입금 대비) ② 미실현(보유 포지션)
