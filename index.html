@@ -462,6 +462,9 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   </div>
 </header>
 
+<!-- 조회 실패 경고 — 거래소/토스 조회가 실패하면 ₩0·'포지션 없음' 대신 여기 이유와 '직전값 표시 중'을 띄운다 -->
+<div id="degradedBanner" style="display:none;margin:0 0 10px;padding:8px 12px;border-radius:10px;background:rgba(255,82,82,0.12);border:1px solid rgba(255,82,82,0.45);color:#ff8a80;font-size:12px;line-height:1.5"></div>
+
 <!-- 통합 자산 요약 (모바일에서 PnL/수익률 우선 노출) -->
 <div class="summary">
   <!-- 0. 전체 총자산 (모든 자산 합산 · 제일 상단) -->
@@ -586,7 +589,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
       <thead><tr>
         <th>심볼</th><th>방향</th><th>모드</th><th>레버</th><th>진입가</th><th>현재가</th>
         <th>수량</th><th>명목</th><th>마진</th><th>PnL%</th><th>PnL($)</th>
-        <th>청산거리</th><th>SL ↓</th><th>TP1 / TP2 / TP3</th>
+        <th>청산거리</th><th>SL ↓ (서버주문 / 목표)</th><th>TP (서버주문 / 목표 T1·T2·T3)</th>
       </tr></thead>
       <tbody id="bnTable"><tr><td colspan="14" style="text-align:center;color:var(--text-dim);padding:24px">로딩...</td></tr></tbody>
     </table>
@@ -621,7 +624,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <!-- 🪙 토스증권 보유종목 -->
 <div class="section" id="tossSection">
-  <h2>🟦 토스증권 (해외주식)</h2>
+  <h2>🟦 토스증권 보유종목 (국내·해외)</h2>
   <div class="table-wrap">
     <table>
       <thead><tr>
@@ -662,7 +665,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
       <tbody id="logTable"><tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px">로딩...</td></tr></tbody>
     </table>
   </div>
-  <div style="color:var(--text-dim);font-size:11px;margin-top:6px">🟢 가동중 · ⚠️ 최근 오류(일시 네트워크 등, 회복중) · 🔴 실제 오류 · ⛔ 프로세스 중지됨</div>
+  <div style="color:var(--text-dim);font-size:11px;margin-top:6px">🟢 가동중 · ⚠️ 최근 오류(일시 네트워크 등, 회복중) · 🔴 실제 오류 · ⏸️ 로그 멈춤(주기 봇이 너무 오래 조용함) · ⛔ 프로세스 중지됨 · ⬜ 로그 파일 없음</div>
 </div>
 
 <!-- 음성 로그 -->
@@ -678,12 +681,17 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 <script>
 // MSA — Frontend (GitHub Pages) ↔ Backend API
-// 현재 백엔드 = cloudflared 터널 (ngrok 무료 쿼터 소진 ERR_NGROK_727 로 전환).
-//   ngrok 쿼터 리셋 후 되돌리려면 이 값만 ngrok 고정도메인으로 교체.
+// 현재 백엔드 = VPS 고정주소(sslip.io) → Caddy → 역터널 → 맥 :3000 (07-28 trycloudflare 은퇴 후 고정)
+//   테스트 백엔드로 잠시 붙이려면 ?api=http://localhost:3999 , 원래대로 돌리려면 ?api=reset
 const DEFAULT_API = 'https://161-33-184-250.sslip.io';
+// 스페이스x 보유 설정 키 — 맨 위에 둔다. 아래쪽에 두면 로드 직후 refreshSpacex() 호출이
+// const 초기화 전(TDZ)에 접근해 ReferenceError → 첫 60초간 카드·총자산에서 스페이스x가 빠졌다.
+const SPACEX_KEY = 'JARVIS_SPACEX';
+const SPACEX_SYMBOL = 'SPCX';
 const params = new URLSearchParams(location.search);
 const apiFromQuery = params.get('api');
-if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
+if (apiFromQuery === 'reset') localStorage.removeItem('OPENCLAW_API');   // ?api= 는 영구 저장이라 되돌릴 방법이 필요
+else if (apiFromQuery) localStorage.setItem('OPENCLAW_API', apiFromQuery);
 
 // 옛/무효 localStorage 값 자동 무효화 — dev(localhost)·쿼터소진된 ngrok·회전된 옛 trycloudflare URL이
 // 캐시에 남으면 리셋. 퀵터널은 재시작마다 URL이 바뀌므로, DEFAULT_API와 다른 trycloudflare 값도 폐기.
@@ -720,13 +728,32 @@ const ASSET = {
   bhOn: false, bhKRW: 0, bhProfitKRW: 0, bhBaseKRW: 0,  // 빗썸(잔고 조회 전용): 총액 + 평단 대비 평가손익
   spacexKRW: 0,                                    // 스페이스x: 평가액 (원가 미보유 → 수익률 계산 제외)
 };
+// 화면 경고 배너 — 출처별 메시지를 모아 한 줄씩 표시 (status/토스/스캘핑이 각자 갱신)
+const WARN = {};
+function setWarn(key, msg) {
+  if (msg) WARN[key] = msg; else delete WARN[key];
+  const el = document.getElementById('degradedBanner');
+  if (!el) return;
+  const list = Object.values(WARN).flat().filter(Boolean);
+  el.style.display = list.length ? '' : 'none';
+  el.innerHTML = list.map(m => `<div>⚠️ ${m}</div>`).join('');
+}
+// "N분 전" — stale(직전 정상값) 표시용
+function agoText(ts) {
+  if (!ts) return '';
+  const m = Math.round((Date.now() - ts) / 60000);
+  return m < 1 ? '방금' : (m < 60 ? m + '분 전' : Math.floor(m / 60) + '시간 전');
+}
+const FE_OK = {};   // 거래소별 마지막 정상 수신 시각(프론트 기준) — 서버 직전값도 없을 때 '화면은 N분 전 값' 안내용
+const escHtml = (s) => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 function renderGrandAll() {
   // 거래소(바이낸스+업비트) + 토스 전체잔고 + 스페이스x. coreKRW엔 서버 토스(USD종목만)가 섞여있어 이중합산되므로 bn/up만 사용
   const totalKRW = ASSET.bnKRW + ASSET.upKRW + ASSET.tossKRW + ASSET.spacexKRW + ASSET.bhKRW;
   const el = document.getElementById('grandAllTotal');
   if (el) el.textContent = fmt.krw(totalKRW);
   const usdEl = document.getElementById('grandAllUSD');
-  if (usdEl) usdEl.textContent = fmt.usd(totalKRW / (LAST_USDKRW || 1476)) + ' USDT';
+  if (usdEl) usdEl.textContent = fmt.usd(totalKRW / (LAST_USDKRW || 1476)) + ' USDT' +
+    ((ASSET.missing || []).length ? ` · ⚠️ ${ASSET.missing.join('·')} 미포함(조회 실패)` : '');
   // 합산 수익률 = (코어 보유포지션 평가손익 + 토스 평가손익) / (각 매입원가 합) · 스페이스x는 원가 없어 제외
   const profit = ASSET.coreProfitKRW + ASSET.tossProfitKRW + ASSET.bhProfitKRW;
   const base = ASSET.coreBaseKRW + ASSET.tossBaseKRW + ASSET.bhBaseKRW;
@@ -792,8 +819,11 @@ const BOT_NAMES = {
   longPositionGuard: '🛡 롱 포지션 가드',
   bbBreakoutGuard: '📊 볼린저 돌파 가드',
   btcAlignmentBot: '₿ BTC 정렬봇',
+  testaMaBot: '📐 테스타 MA봇',
+  btcEntryAdvisor: '₿ BTC 진입 조언',
 };
-const botKo = (file) => BOT_NAMES[(String(file).match(/([A-Za-z]+)\.ts$/) || [])[1]] || '';
+// 파일명에 숫자가 섞인 봇(htf4hKillSwitch)도 매칭되게 [A-Za-z0-9]
+const botKo = (file) => BOT_NAMES[(String(file).match(/([A-Za-z][A-Za-z0-9]*)\.ts$/) || [])[1]] || '';
 
 // ngrok 무료 플랜 경고 페이지 우회 + 기타 터널 호환
 // signal: 15초 타임아웃 — 터널이 멈추면 요청이 영원히 매달려 화면이 굳던 문제 방지 (다음 주기가 재시도)
@@ -819,25 +849,57 @@ async function refresh() {
     if (!r.ok) throw new Error(r.error || 'API ok=false');
     const { binance, upbit, bots, summary } = r;
 
+    // ⚠️ 조회 실패 구간 — 서버는 실패 구간을 직전 정상값(stale=true, asOf)으로 채우거나, 그것도 없으면 빈값+error 로 준다.
+    //    빈값을 그대로 그리면 '₩0'·'활성 포지션 없음'이 정상처럼 보여 위험 → 배너로 알리고 화면의 직전 값을 유지한다.
+    const errs = Object.assign({}, r.errors || {});
+    if (!r.errors && binance.error) errs.binance = { error: binance.error, stale: false };   // 구버전 서버 호환
+    const bnDown = !!binance.error && !binance.stale;   // 직전값도 없음 → 바이낸스 값 미확인
+    const upDown = !!upbit.error && !upbit.stale;
+    // 서버가 직전값(stale)을 줬으면 그 값의 시각(asOf)을 기록 — '화면은 N분 전 값'이 실제 데이터 나이를 말하게
+    if (!bnDown) FE_OK.binance = binance.stale ? (binance.asOf || Date.now()) : Date.now();
+    if (!upDown) FE_OK.upbit = upbit.stale ? (upbit.asOf || Date.now()) : Date.now();
+    const ERR_LABEL = { binance: '바이낸스 선물', binanceAlgo: '바이낸스 서버손절(알고주문)', upbit: '업비트', bithumb: '빗썸',
+      binanceSpot: '바이낸스 현물', binanceEarn: '바이낸스 Earn', binanceWallet: '바이낸스 지갑합계', invest: '입출금 내역', fx: '환율' };
+    // 같은 원인(예: 터널 장애)으로 여러 구간이 함께 실패하면 한 줄로 묶는다
+    const groups = {};
+    for (const [k, v] of Object.entries(errs)) {
+      const suffix = v.stale ? (v.asOf ? ` — ${agoText(v.asOf)} 값 표시 중` : ' — 기본값 사용')
+                             : (FE_OK[k] ? ` — 화면은 ${agoText(FE_OK[k])} 값` : (k === 'binance' || k === 'upbit' ? ' — 값 확인 불가' : ''));
+      const g = (groups[v.error + '|' + suffix] = groups[v.error + '|' + suffix] || { labels: [], error: v.error, suffix });
+      g.labels.push(ERR_LABEL[k] || k);
+    }
+    setWarn('status', Object.values(groups).map(g => `${g.labels.join('·')} 조회 실패: ${escHtml(g.error)}${g.suffix}`));
+    // 한 번도 정상값을 못 받은 거래소가 있으면 총자산 합계가 그만큼 빠져 있다는 표시용
+    ASSET.missing = [bnDown && !FE_OK.binance ? '바이낸스' : '', upDown && !FE_OK.upbit ? '업비트' : ''].filter(Boolean);
+
     // 총 자산 (업비트 스테이킹 수동입력 합산)
     const upbitStaking = getUpStakingList().reduce((a,s)=>a+(s.krw||0),0);
     const _usdKrwFx = r.exchange?.USD_KRW || summary.usdKrw || 1476;
     LAST_USDKRW = _usdKrwFx;
     const grandTotal = (summary.grandTotalKRW || 0) + upbitStaking;
-    document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
-    document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / _usdKrwFx) + ' USDT';
-    // 🏆 전체 총자산 합산 — 코어(거래소) 평가액 + 보유포지션 평가손익(토스와 동일 기준: 원가 대비)
-    ASSET.coreKRW = grandTotal;
-    ASSET.coreProfitKRW = summary.unrealizedKRW || 0;
-    ASSET.coreBaseKRW = summary.unrealizedBaseKRW || 0;
-    ASSET.bnKRW = binance.totalKRW || 0;
-    ASSET.upKRW = (upbit.totalKRW || 0) + upbitStaking;
+    // 거래소 하나라도 값 미확인이면 합계가 그만큼 빠진 값 → 직전 표시값 유지(₩0 급락처럼 보이지 않게)
+    if (!bnDown && !upDown) {
+      document.getElementById('grandTotal').textContent = fmt.krw(grandTotal);
+      document.getElementById('grandTotalUSD').textContent = fmt.usd(grandTotal / _usdKrwFx) + ' USDT';
+      // 🏆 전체 총자산 합산 — 코어(거래소) 평가액 + 보유포지션 평가손익(토스와 동일 기준: 원가 대비)
+      ASSET.coreKRW = grandTotal;
+      ASSET.coreProfitKRW = summary.unrealizedKRW || 0;
+      ASSET.coreBaseKRW = summary.unrealizedBaseKRW || 0;
+    }
+    if (!bnDown) ASSET.bnKRW = binance.totalKRW || 0;
+    if (!upDown) ASSET.upKRW = (upbit.totalKRW || 0) + upbitStaking;
     // 빗썸 — 서버가 키 있을 때만 enabled. 원가는 평단×수량(시세 있는 코인만)으로 계산해 수익률 기준을 토스와 맞춘다
+    // (조회 실패여도 서버가 직전값(stale)을 줬으면 계속 합산)
     const bh = r.bithumb || {};
-    ASSET.bhOn = !!(bh.enabled && !bh.error);
-    ASSET.bhKRW = ASSET.bhOn ? (bh.totalKRW || 0) : 0;
-    ASSET.bhProfitKRW = ASSET.bhOn ? (bh.pnlKRW || 0) : 0;
-    ASSET.bhBaseKRW = ASSET.bhOn ? (bh.holdings || []).filter(h => h.currentPrice != null).reduce((a, h) => a + h.qty * h.avgPrice, 0) : 0;
+    // 실패 + 직전값도 없음 → 화면의 직전 빗썸 값 유지 (총자산에서 말없이 빠지지 않게). 한 번도 못 받았으면 '미포함' 표시
+    const bhDown = !!(bh.enabled && bh.error && !bh.stale);
+    if (!bhDown) {
+      if (bh.enabled) FE_OK.bithumb = Date.now();
+      ASSET.bhOn = !!bh.enabled;
+      ASSET.bhKRW = ASSET.bhOn ? (bh.totalKRW || 0) : 0;
+      ASSET.bhProfitKRW = ASSET.bhOn ? (bh.pnlKRW || 0) : 0;
+      ASSET.bhBaseKRW = ASSET.bhOn ? (bh.holdings || []).filter(h => h.currentPrice != null).reduce((a, h) => a + h.qty * h.avgPrice, 0) : 0;
+    } else if (!FE_OK.bithumb) ASSET.missing.push('빗썸');
     renderGrandAll();
 
     // 수익률 — 서버 자동계산 (수동입력 무시). ① 누적(입출금 총입금 대비) ② 미실현(보유 포지션)
@@ -854,11 +916,22 @@ async function refresh() {
       profitKRWEl.innerHTML = (profit>=0?'+':'') + fmt.krw(profit) +
         '<br><span style="opacity:0.6;font-size:10px">순입금 ' + fmt.krw(summary.netDepositKRW || 0) +
         ' 대비 (입금 ' + fmt.krw(summary.totalDepositKRW || 0) + ' − 출금 ' + fmt.krw(summary.totalWithdrawKRW || 0) + ')</span>';
+    } else if (summary.assetsIncomplete || summary.investPending) {
+      // 잔고/입출금을 아직(또는 지금) 못 읽음 → 계산 보류. 직전 표시값이 있으면 그대로 두고 안내만 붙인다
+      if (['-', '조회 실패', '집계 중'].includes(returnPctEl.textContent)) {
+        returnPctEl.textContent = summary.investPending ? '집계 중' : '조회 실패';
+        returnPctEl.className = 'card-value gray';
+      }
+      profitKRWEl.innerHTML = '<span style="color:#ffb74d;font-size:11px">' +
+        (summary.investPending ? '⏳ 입출금 내역 집계 중' : '⚠️ 거래소 잔고 조회 실패 — 수익률 계산 보류') + '</span>';
     } else {
       returnPctEl.textContent = summary.depositError ? '조회 실패' : '-';
       returnPctEl.className = 'card-value gray';
+      // IP 미인증(no_authorization_ip)일 때만 'IP 인증 필요' — 터널 장애 등 다른 원인에 오해 소지 없게
+      //   (/IP/i 는 EPIPE·skip 같은 단어에도 걸려 대소문자 구분 + 단어 경계로 본다 — 바이낸스 -2015 "API-key, IP, or permissions")
+      const ipHint = /authorization_ip|\bIP\b/.test(summary.depositError || '') ? ' · IP 인증 필요' : '';
       profitKRWEl.innerHTML = summary.depositError
-        ? '<span style="color:#ff5252">⚠️ 업비트 입출금 조회 실패<br><span style="font-size:10px">' + summary.depositError + ' · IP 인증 필요</span></span>'
+        ? '<span style="color:#ff5252">⚠️ 입출금 내역 조회 실패<br><span style="font-size:10px">' + escHtml(summary.depositError) + ipHint + '</span></span>'
         : '입출금 데이터 없음';
     }
     // ② 미실현(보유 포지션)
@@ -875,7 +948,8 @@ async function refresh() {
       unrealKRWEl.textContent = '열린 포지션 없음';
     }
 
-    // 바이낸스 (KRW는 실시간 환율 적용 + USDT 동시 표시)
+    // 바이낸스 (KRW는 실시간 환율 적용 + USDT 동시 표시) — 값 미확인(bnDown)이면 카드·Earn 표는 직전 값 유지
+    if (!bnDown) {
     document.getElementById('bnTotal').textContent = fmt.krw(binance.totalKRW || 0);
     document.getElementById('bnUSDT').textContent =
       `$${(binance.totalUSDT||0).toFixed(2)} USDT (환율 ₩${Math.round(_usdKrwFx).toLocaleString()})` +
@@ -906,12 +980,15 @@ async function refresh() {
     } else {
       earnSection.style.display = 'none';
     }
+    } // !bnDown
 
-    // 업비트 (스테이킹 수동입력 합산 — 항상 표시, 0이면 입력 안내)
-    document.getElementById('upTotal').textContent = fmt.krw((upbit.totalKRW || 0) + upbitStaking);
-    document.getElementById('upSplit').textContent =
-      `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}` +
-      (upbitStaking > 0 ? `/스테이킹 ${fmt.krw(upbitStaking)}` : ' · 스테이킹 ✏️클릭입력');
+    // 업비트 (스테이킹 수동입력 합산 — 항상 표시, 0이면 입력 안내) — 값 미확인이면 직전 값 유지
+    if (!upDown) {
+      document.getElementById('upTotal').textContent = fmt.krw((upbit.totalKRW || 0) + upbitStaking);
+      document.getElementById('upSplit').textContent =
+        `KRW ${fmt.krw(upbit.krwBalance||0)}/코인 ${fmt.krw(upbit.coinValue||0)}` +
+        (upbitStaking > 0 ? `/스테이킹 ${fmt.krw(upbitStaking)}` : ' · 스테이킹 ✏️클릭입력');
+    }
 
     // 업비트 스테이킹 전용 섹션 (코인별 표)
     renderUpStaking(_usdKrwFx);
@@ -921,7 +998,7 @@ async function refresh() {
     const mrCard = document.getElementById('mrCard');
     const mrValue = document.getElementById('mrValue');
     const mrSub = document.getElementById('mrSub');
-    if (mrValue) {
+    if (mrValue && !bnDown) {   // 조회 실패 시 0%(=안전)로 덮어쓰지 않는다
       mrValue.textContent = mr.toFixed(2) + '%';
       // 임계값별 색상 + 깜빡임
       mrCard.classList.remove('mr-warn','mr-danger','mr-critical');
@@ -956,9 +1033,9 @@ async function refresh() {
       el.textContent = `미실현 ${sign}${fmt.krw(pnlKRW)}`;
       el.style.color = pnlKRW >= 0 ? 'var(--green)' : 'var(--red)';
     };
-    setPnlLabel('grandTotalPnl', _totalPnlKRW);
-    setPnlLabel('bnTotalPnl', _bnPnlKRW);
-    setPnlLabel('upTotalPnl', _upPnlKRW);
+    if (!bnDown && !upDown) setPnlLabel('grandTotalPnl', _totalPnlKRW);
+    if (!bnDown) setPnlLabel('bnTotalPnl', _bnPnlKRW);
+    if (!upDown) setPnlLabel('upTotalPnl', _upPnlKRW);
 
     // PnL
     // 환율 표시
@@ -972,50 +1049,75 @@ async function refresh() {
     const bnPctVal = bnMargin > 0 ? (summary.bnPnl / bnMargin) * 100 : 0;
     const upPctVal = upInvest > 0 ? (summary.upPnlKRW / upInvest) * 100 : 0;
     // 🏆 총자산 브레이크다운 — 바이낸스/업비트 수익률(미실현·마진/투자 대비) 반영
-    ASSET.bnPct = bnMargin > 0 ? bnPctVal : null;
-    ASSET.bnProfitKRW = _bnPnlKRW;
-    ASSET.upPct = upInvest > 0 ? upPctVal : null;
-    ASSET.upProfitKRW = _upPnlKRW;
+    if (!bnDown) { ASSET.bnPct = bnMargin > 0 ? bnPctVal : null; ASSET.bnProfitKRW = _bnPnlKRW; }
+    if (!upDown) { ASSET.upPct = upInvest > 0 ? upPctVal : null; ASSET.upProfitKRW = _upPnlKRW; }
     renderGrandAll();
     const totalPctVal = totalCapitalUSD > 0 ? (summary.netPnlUSD / totalCapitalUSD) * 100 : 0;
 
-    // 통합 PnL — 원화를 메인으로
+    // 통합 PnL — 원화를 메인으로 (거래소 하나라도 값 미확인이면 직전 값 유지)
     const totalPnl = document.getElementById('totalPnl');
     const totalPnlKRW = summary.netPnlUSD * usdkrwReal;
-    totalPnl.textContent = (totalPnlKRW >= 0 ? '+' : '') + fmt.krw(totalPnlKRW) + ' (' + fmt.pct(totalPctVal) + ')';
-    totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
-    const krwEl = document.getElementById('totalPnlKRW');
-    krwEl.textContent = fmt.usd(summary.netPnlUSD);
-    krwEl.style.color = totalPnlKRW >= 0 ? 'var(--green)' : 'var(--red)';
-    document.getElementById('updateTs').textContent = '⏱ ' + new Date().toLocaleTimeString('ko-KR');
+    if (!bnDown && !upDown) {
+      totalPnl.textContent = (totalPnlKRW >= 0 ? '+' : '') + fmt.krw(totalPnlKRW) + ' (' + fmt.pct(totalPctVal) + ')';
+      totalPnl.className = 'card-value ' + cls(summary.netPnlUSD);
+      const krwEl = document.getElementById('totalPnlKRW');
+      krwEl.textContent = fmt.usd(summary.netPnlUSD);
+      krwEl.style.color = totalPnlKRW >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+    // 갱신 시각 — 일부 구간 실패면 ⚠️ 를 붙여 '새로 받은 값'이 아님을 알린다
+    const nErr = Object.keys(errs).length;
+    document.getElementById('updateTs').innerHTML = '⏱ ' + new Date().toLocaleTimeString('ko-KR') +
+      (nErr ? ` <span style="color:#ff8a80">⚠️ ${nErr}개 구간 조회 실패</span>` : '');
 
     // 바이낸스 PnL — 원화를 메인으로
     const bnPnlEl = document.getElementById('bnPnl');
     const bnPnlVal = summary.bnPnl || 0;
     const usdkrw = usdkrwReal;
     const bnPnlKRW = bnPnlVal * usdkrw;
-    bnPnlEl.textContent = (bnPnlKRW >= 0 ? '+' : '') + fmt.krw(bnPnlKRW) + ' (' + fmt.pct(bnPctVal) + ')';
-    bnPnlEl.className = 'card-value ' + cls(bnPnlVal);
-    document.getElementById('bnPnlKRW').textContent = fmt.usd(bnPnlVal) + ' · 마진 $' + bnMargin.toFixed(0);
+    if (!bnDown) {
+      bnPnlEl.textContent = (bnPnlKRW >= 0 ? '+' : '') + fmt.krw(bnPnlKRW) + ' (' + fmt.pct(bnPctVal) + ')';
+      bnPnlEl.className = 'card-value ' + cls(bnPnlVal);
+      document.getElementById('bnPnlKRW').textContent = fmt.usd(bnPnlVal) + ' · 마진 $' + bnMargin.toFixed(0);
+    }
 
     // 업비트 PnL — 바이낸스 PnL과 동일 포맷 (메인: 원화+%, 보조: USD+투자)
     const upPnlEl = document.getElementById('upPnl');
     const upPnlKRW = summary.upPnlKRW || 0;
     const upPnlUSD = summary.upPnlUSD || 0;
-    upPnlEl.textContent = (upPnlKRW >= 0 ? '+' : '') + fmt.krw(upPnlKRW) + ' (' + fmt.pct(upPctVal) + ')';
-    upPnlEl.className = 'card-value ' + cls(upPnlKRW);
-    document.getElementById('upPnlUSD').textContent = fmt.usd(upPnlUSD) + ' · 투자 ' + fmt.krw(upInvest);
+    if (!upDown) {
+      upPnlEl.textContent = (upPnlKRW >= 0 ? '+' : '') + fmt.krw(upPnlKRW) + ' (' + fmt.pct(upPctVal) + ')';
+      upPnlEl.className = 'card-value ' + cls(upPnlKRW);
+      document.getElementById('upPnlUSD').textContent = fmt.usd(upPnlUSD) + ' · 투자 ' + fmt.krw(upInvest);
+    }
 
-    // 바이낸스 테이블
-    document.getElementById('bnTable').innerHTML = binance.positions.map(p => {
+    // 바이낸스 테이블 — 값 미확인이면 직전 표를 유지하고, 처음부터 실패면 '포지션 없음' 대신 실패를 표시
+    const bnTableEl = document.getElementById('bnTable');
+    if (bnDown) {
+      if (!FE_OK.binance) bnTableEl.innerHTML = `<tr><td colspan="14" style="text-align:center;color:#ff5252;padding:24px">⚠️ 바이낸스 조회 실패 — 포지션 확인 불가 (${escHtml(binance.error)})</td></tr>`;
+    } else
+    bnTableEl.innerHTML = binance.positions.map(p => {
       const fixDigits = (v) => v.toFixed(v<1?6:3);
       const g = p.guard;
-      const slCell = g ? `<span class="mono short">$${fixDigits(g.sl)}<br><span style="font-size:11px;opacity:0.7">${g.slPct}%</span></span>` : '-';
-      const tpCell = g ? `<span class="mono long" style="font-size:12px">
-        T1 $${fixDigits(g.tp1)} <span style="opacity:0.6">(+${g.tp1Pct}%)</span><br>
+      const pctTxt = (v) => v == null ? '' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+      // SL: 거래소에 실제로 걸린 손절(serverStop)이 진실. guard 는 프로필로 계산한 '목표'일 뿐 주문 존재와 무관.
+      //   serverStop 객체 = ✅ 실제 손절 / null = 서버 손절 없음(깜빡임 경고) / 필드 없음 = 조회 실패(확인 불가) 또는 구버전 서버
+      const ss = p.serverStop;
+      let slCell = '';
+      // 알고주문 조회가 지금 실패 중이면 ✅ 는 직전 확인값 — 그새 취소/체결됐을 수 있어 확인 시각을 붙인다
+      const algoAgo = binance.algoError ? agoText((r.errors && r.errors.binanceAlgo && r.errors.binanceAlgo.asOf) || 0) : '';
+      if (ss) slCell = `<span class="mono short">✅ $${fixDigits(ss.trigger)}<br><span style="font-size:11px;opacity:0.75">서버손절 ${pctTxt(ss.pct)}${ss.isJv ? ' · 봇' : ''}</span>` +
+        (binance.algoError ? `<br><span style="font-size:10px;color:#ffb74d">⚠️ ${algoAgo || '이전'} 확인값</span>` : '') + `</span>`;
+      else if (ss === null) slCell = `<span class="mono red" style="animation:mrBlinkDanger 0.8s ease-in-out infinite;font-weight:700">⚠️ 서버손절 없음</span>`;
+      else if (binance.algoError) slCell = `<span class="mono gold">손절 확인 불가</span>`;
+      if (g) slCell += `${slCell ? '<br>' : ''}<span class="mono" style="font-size:10px;opacity:0.55">목표 $${fixDigits(g.sl)} (${g.slPct}%)</span>`;
+      if (!slCell) slCell = '-';
+      const st = p.serverTp;
+      const tpSrv = st ? `<span class="mono long">✅ 서버 TP $${fixDigits(st.trigger)} <span style="opacity:0.7">(${pctTxt(st.pct)})</span></span><br>` : '';
+      const tpCell = g ? tpSrv + `<span class="mono long" style="font-size:12px;opacity:0.85">
+        <span style="font-size:10px;opacity:0.7">목표</span> T1 $${fixDigits(g.tp1)} <span style="opacity:0.6">(+${g.tp1Pct}%)</span><br>
         T2 $${fixDigits(g.tp2)} <span style="opacity:0.6">(+${g.tp2Pct}%)</span><br>
         T3 $${fixDigits(g.tp3)} <span style="opacity:0.6">(+${g.tp3Pct}%)</span>
-      </span>` : '-';
+      </span>` : (tpSrv || '-');
       // 청산까지 거리 + 실질 Margin Ratio + 색상 + 깜빡임
       const dist = Math.abs(p.liqDistancePct || 0);
       const realMR = p.realMarginRatio || 0;
@@ -1059,8 +1161,12 @@ async function refresh() {
       </tr>`;
     }).join('') || `<tr><td colspan="14" style="text-align:center;color:var(--text-dim);padding:24px">활성 포지션 없음</td></tr>`;
 
-    // 업비트 테이블
-    document.getElementById('upTable').innerHTML = upbit.holdings.map(h => `
+    // 업비트 테이블 — 값 미확인이면 직전 표 유지, 처음부터 실패면 '보유 없음' 대신 실패 표시
+    const upTableEl = document.getElementById('upTable');
+    if (upDown) {
+      if (!FE_OK.upbit) upTableEl.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ff5252;padding:24px">⚠️ 업비트 조회 실패 — 보유 확인 불가 (${escHtml(upbit.error)})</td></tr>`;
+    } else
+    upTableEl.innerHTML = upbit.holdings.map(h => `
       <tr>
         <td data-label="코인"><span class="symbol-tag">${h.currency}</span></td>
         <td data-label="수량" class="mono">${fmt.qty(h.balance)}</td>
@@ -1083,8 +1189,9 @@ async function refresh() {
     }).join('') || '<div class="bot" style="border-left-color:var(--red)">가동 봇 없음</div>';
   } catch (e) {
     console.error('refresh error:', e);
+    setWarn('status', `서버(/api/status) 응답 실패: ${escHtml(e.message)} — 화면은 마지막으로 받은 값`);
     const ts = document.getElementById('updateTs');
-    ts.innerHTML = `❌ <span style="color:#ff5252">${e.message}</span><br><span style="font-size:10px;opacity:0.7">${API_BASE}</span>`;
+    ts.innerHTML = `❌ <span style="color:#ff5252">${escHtml(e.message)}</span><br><span style="font-size:10px;opacity:0.7">${API_BASE}</span>`;
     const pnlEl = document.getElementById('totalPnl');
     if (pnlEl) { pnlEl.textContent = 'ERROR'; pnlEl.className = 'card-value red'; }
   }
@@ -1105,6 +1212,7 @@ function fmtStockPrev(s) {
 
 // 주식 시세 새로고침 (1분 캐시)
 async function refreshStocks() {
+  if (document.hidden) return;   // 탭 비활성 시 폴링 중단 — 탭 복귀 시 visibilitychange 가 즉시 갱신
   try {
     const res = await fetch(API_BASE + '/api/stocks', fetchOpts());
     const r = await res.json();
@@ -1144,7 +1252,7 @@ async function refreshStocks() {
 async function refreshLearning() {
   const cardsEl = document.getElementById('learnCards');
   const reflEl = document.getElementById('learnReflection');
-  if (!cardsEl) return;
+  if (!cardsEl || document.hidden) return;   // 탭 비활성 시 폴링 중단
   try {
     const res = await fetch(API_BASE + '/api/learning', fetchOpts());
     const d = await res.json();
@@ -1156,7 +1264,11 @@ async function refreshLearning() {
       `<div class="card"><div class="card-label">🌅 마지막 9AM 반영</div><div class="card-value" style="font-size:15px">${d.lastDailyReflection || '없음'}</div><div class="timestamp">회고 ${d.reflectionCount}건</div></div>` +
       `<div class="card"><div class="card-label">🔄 records 동기화</div><div class="card-value" style="font-size:15px">${tsKR(d.lastRecordSync)}</div><div class="timestamp">스캔 ${d.totalScans}회</div></div>`;
     const aj = d.latest && d.latest.aiJson;
-    if (aj) {
+    // AI 회고 JSON 이 비어 있으면(summary:'' 등) 빈 카드 대신 명시 — 회고 저장 경로 고장을 눈치챌 수 있게
+    const ajEmpty = aj && !Object.values(aj).some(v => Array.isArray(v) ? v.length : !!v);
+    if (ajEmpty) {
+      reflEl.innerHTML = `<div class="card" style="text-align:left;display:block"><div class="card-label">🤖 최신 AI 회고 · ${d.latest.date || ''}</div><div style="margin:8px 0;font-size:12px;opacity:0.6">회고 비어있음 (AI 응답 내용 없음)</div></div>`;
+    } else if (aj) {
       const arr = (x) => Array.isArray(x) ? x.map(v => typeof v === 'object' ? (v.symbol || JSON.stringify(v)) : v).join(', ') : '';
       const tsl = Array.isArray(aj.tighten_sl) ? aj.tighten_sl.map(v => typeof v === 'object' ? (v.symbol + (v.reason ? `(${v.reason})` : '')) : v).join(', ') : '';
       reflEl.innerHTML = `<div class="card" style="text-align:left;display:block">
@@ -1180,7 +1292,7 @@ async function refreshLearning() {
 async function refreshRealizedSince() {
   const valEl = document.getElementById('realizedSinceMay');
   const subEl = document.getElementById('realizedSinceMaySub');
-  if (!valEl) return;
+  if (!valEl || document.hidden) return;   // 탭 비활성 시 폴링 중단
   try {
     const res = await fetch(API_BASE + '/api/realized-since', fetchOpts());
     const d = await res.json();
@@ -1201,23 +1313,27 @@ async function refreshRealizedSince() {
 // 🟦 토스증권 보유종목 (해외주식)
 async function refreshToss() {
   const tbody = document.getElementById('tossTable');
-  if (!tbody) return;
+  // 탭 비활성 시 중단 — 대시보드의 토스 조회(로그인)는 주식봇 토큰을 무효화할 수 있어 특히 아껴야 한다
+  if (!tbody || document.hidden) return;
   try {
     const res = await fetch(API_BASE + '/api/toss', fetchOpts());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
     if (!d.ok) throw new Error(d.error || '응답 없음');
+    // 서버가 조회 실패 시 직전값(stale)을 줬으면 값은 그리고 배너로 알린다
+    setWarn('toss', d.stale ? `토스 조회 실패: ${escHtml(d.error)} — ${agoText(d.asOf)} 값 표시 중` : '');
     const fx = d.usdKrw || LAST_USDKRW || 1476;
     const items = d.items || [];
     // 상단 요약 카드 — 전체잔고(원화) = 국내(KRW) + 해외(USD×환율) 전 종목 합산
     // (서버 totalValueUSD는 USD 종목만 합산해 국내주식이 빠지므로 프론트에서 전 종목 재집계)
+    const kOf = (it) => it.currency === 'KRW' ? 1 : fx;   // 국내는 그대로, 해외는 환율 적용
+    let valKRW = 0, purKRW = 0;
+    for (const it of items) {
+      valKRW += (it.value || 0) * kOf(it);
+      purKRW += (it.purchase || 0) * kOf(it);
+    }
     const tEl = document.getElementById('tossTotal');
     if (tEl) {
-      let valKRW = 0, purKRW = 0;
-      for (const it of items) {
-        const k = it.currency === 'KRW' ? 1 : fx;   // 국내는 그대로, 해외는 환율 적용
-        valKRW += (it.value || 0) * k;
-        purKRW += (it.purchase || 0) * k;
-      }
       const pnlKRW = valKRW - purKRW;
       const rate = purKRW ? (pnlKRW / purKRW) * 100 : 0;
       const rc = rate >= 0 ? 'long' : 'short';
@@ -1233,28 +1349,37 @@ async function refreshToss() {
       renderGrandAll();
     }
     if (!items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:16px">보유 종목 없음</td></tr>'; return; }
+    // 종목 행 — 국내(KRW) 종목은 원화 그대로, 해외(USD)는 $ + 원화 환산. (예전엔 전부 '$' 표기 + 환율 곱셈이라
+    //   삼성전자 3주가 '$174000.00 / ₩232,234,320' 으로 찍혔다)
     const rows = items.map(it => {
       const c = it.pnlRate >= 0 ? 'long' : 'short';
+      const isKR = it.currency === 'KRW';
+      const money = (v) => isKR ? fmt.krw(v) : '$' + Number(v || 0).toFixed(2);
+      const sub = (v) => isKR ? '' : `<br><span style="opacity:0.6;font-size:10px">${fmt.krw(v * fx)}</span>`;
+      const sgn = it.pnl >= 0 ? '+' : '';
       return `<tr>
         <td>${it.name} <span style="opacity:0.5;font-size:11px">${it.symbol}</span></td>
         <td class="mono">${Number(it.qty).toLocaleString(undefined,{maximumFractionDigits:6})}</td>
-        <td class="mono">$${it.avg.toFixed(2)}</td>
-        <td class="mono">$${it.price.toFixed(2)}</td>
-        <td class="mono">$${it.value.toFixed(2)}<br><span style="opacity:0.6;font-size:10px">${fmt.krw(it.value*fx)}</span></td>
+        <td class="mono">${money(it.avg)}</td>
+        <td class="mono">${money(it.price)}</td>
+        <td class="mono">${money(it.value)}${sub(it.value)}</td>
         <td class="mono ${c}">${(it.pnlRate*100>=0?'+':'')}${(it.pnlRate*100).toFixed(2)}%</td>
-        <td class="mono ${c}">${(it.pnl>=0?'+':'')}$${it.pnl.toFixed(2)}<br><span style="opacity:0.6;font-size:10px">${(it.pnl>=0?'+':'')}${fmt.krw(it.pnl*fx)}</span></td>
+        <td class="mono ${c}">${sgn}${money(it.pnl)}${isKR ? '' : `<br><span style="opacity:0.6;font-size:10px">${sgn}${fmt.krw(it.pnl * fx)}</span>`}</td>
       </tr>`;
     }).join('');
-    const tc = d.totalPnlUSD >= 0 ? 'long' : 'short';
+    // 합계 행 — 전 종목 원화 합산 기준 (토스 totalValueUSD 는 USD 종목만이라 국내가 빠진다)
+    const tPnl = valKRW - purKRW;
+    const tRate = purKRW ? (tPnl / purKRW) * 100 : 0;
+    const tc = tPnl >= 0 ? 'long' : 'short';
     const total = `<tr style="font-weight:700;border-top:1px solid var(--border)">
-      <td colspan="4">합계 (평가/매입 $${d.totalValueUSD.toFixed(2)}/$${d.totalPurchaseUSD.toFixed(2)})</td>
-      <td class="mono">$${d.totalValueUSD.toFixed(2)}<br><span style="opacity:0.6;font-size:10px">${fmt.krw(d.totalValueUSD*fx)}</span></td>
-      <td class="mono ${tc}">${(d.totalPnlRate*100>=0?'+':'')}${(d.totalPnlRate*100).toFixed(2)}%</td>
-      <td class="mono ${tc}">${(d.totalPnlUSD>=0?'+':'')}$${d.totalPnlUSD.toFixed(2)}<br><span style="opacity:0.6;font-size:10px">${(d.totalPnlUSD>=0?'+':'')}${fmt.krw(d.totalPnlUSD*fx)}</span></td>
+      <td colspan="4">합계 (평가/매입 ${fmt.krw(valKRW)}/${fmt.krw(purKRW)})</td>
+      <td class="mono">${fmt.krw(valKRW)}<br><span style="opacity:0.6;font-size:10px">$${(valKRW / fx).toFixed(2)}</span></td>
+      <td class="mono ${tc}">${tRate >= 0 ? '+' : ''}${tRate.toFixed(2)}%</td>
+      <td class="mono ${tc}">${tPnl >= 0 ? '+' : ''}${fmt.krw(tPnl)}<br><span style="opacity:0.6;font-size:10px">${tPnl >= 0 ? '+' : ''}$${(tPnl / fx).toFixed(2)}</span></td>
     </tr>`;
     tbody.innerHTML = rows + total;
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ff5252;padding:16px">토스 로드 실패: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ff5252;padding:16px">토스 로드 실패: ${escHtml(e.message)}</td></tr>`;
     const tEl = document.getElementById('tossTotal'); if (tEl) tEl.textContent = '조회 실패';
   }
 }
@@ -1268,11 +1393,13 @@ async function refreshLogs() {
     const res = await fetch(API_BASE + '/api/logs', fetchOpts());
     const d = await res.json();
     if (!d.ok) throw new Error(d.error || '응답 없음');
-    const ICON = { ok: '🟢', warn: '⚠️', error: '🔴', down: '⛔', missing: '⬜' };
-    const CLS = { ok: 'long', warn: '', error: 'short', down: 'short', missing: '' };
+    // stale = 주기적으로 로그를 찍는 봇이 정해진 시간(quietMin)보다 오래 조용함 → 멈춤 의심
+    const ICON = { ok: '🟢', warn: '⚠️', error: '🔴', down: '⛔', missing: '⬜', stale: '⏸️' };
+    const CLS = { ok: 'long', warn: '', error: 'short', down: 'short', missing: '', stale: 'gold' };
     tbody.innerHTML = (d.bots || []).map(b => {
       const stt = b.status || 'ok';
-      const age = b.status === 'down' ? '중지됨' : (b.ageMin < 0 ? '-' : (b.ageMin < 60 ? b.ageMin + '분 전' : Math.floor(b.ageMin / 60) + '시간 전'));
+      const ageTxt = b.ageMin < 0 ? '-' : (b.ageMin < 60 ? b.ageMin + '분 전' : Math.floor(b.ageMin / 60) + '시간 전');
+      const age = b.status === 'down' ? '중지됨' : (stt === 'stale' ? `${ageTxt} (멈춤?)` : ageTxt);
       const last = (stt === 'error' && b.lastError ? b.lastError : b.lastLine || '').replace(/[<>]/g, '');
       return `<tr>
         <td>${b.name}</td>
@@ -1292,39 +1419,63 @@ const KR_NAMES = { '010140': '삼성중공업', '005930': '삼성전자', '00066
 async function refreshScalping() {
   const cntEl = document.getElementById('scalpingCount');
   const listEl = document.getElementById('scalpingList');
-  if (!cntEl || !listEl) return;
+  // 탭 비활성 시 중단 — 매 호출이 바이낸스 positionRisk·토스 조회를 유발한다 (탭 복귀 시 즉시 갱신됨)
+  if (!cntEl || !listEl || document.hidden) return;
   try {
-    const r = await fetch(API_BASE + '/api/scalping', fetchOpts()).then(x => x.json());
+    const x = await fetch(API_BASE + '/api/scalping', fetchOpts());
+    // Caddy 502 등 HTML 응답이면 'Unexpected token <' 대신 상태코드를 보여준다
+    if (!x.ok) throw new Error(`HTTP ${x.status}`);
+    const r = await x.json();
     if (!r.ok) throw new Error(r.error || '응답 없음');
     const coins = r.coins || [], stocks = r.stocks || [], futures = r.futures || [];
+    // 구간 실패 — 서버가 직전값을 줬으면(stale) 값은 그리고 표시만, 직전값도 없으면 '없음'이 아니라 '확인 불가'
+    const fUnknown = !!r.futuresError && !r.futuresStale;
+    const sUnknown = !!r.stocksError && !r.stocksStale;
+    const botCnt = futures.filter(f => f.scalpBotOn || coins.some(c => c.symbol === f.symbol)).length;
     const total = futures.length + stocks.length;
     cntEl.innerHTML = total > 0
-      ? `<span class="long">${total}건</span> <span style="font-size:12px;opacity:0.6">선물 ${futures.length} (봇 ${coins.length}) · 주식 ${stocks.length}</span>`
-      : `<span style="opacity:0.5">없음</span>`;
+      ? `<span class="long">${total}건</span> <span style="font-size:12px;opacity:0.6">선물 ${fUnknown ? '?' : futures.length} (봇 ${botCnt}) · 주식 ${sUnknown ? '?' : stocks.length}</span>`
+      : ((fUnknown || sUnknown) ? `<span class="short">조회 실패</span>` : `<span style="opacity:0.5">없음</span>`);
     const rows = [];
-    // 바이낸스 선물 포지션 — ScalpBot 가동 중이면 🤖 표시 + TP/SL 병기
+    if (r.futuresError) rows.push(`<div class="short" style="padding:2px 0">⚠️ 선물 조회 실패: ${escHtml(r.futuresError)}</div>`);
+    if (r.stocksError) rows.push(`<div class="short" style="padding:2px 0">⚠️ 주식(토스) 조회 실패: ${escHtml(r.stocksError)}${r.stocksStale ? ` — ${agoText(r.stocksAsOf)} 값` : ''}</div>`);
+    // 바이낸스 선물 포지션 — ScalpBot 관리 중이면 🤖 + TP/SL 병기.
+    // autoScalpWatcher 가 붙인 봇은 파일에 없어서, 서버가 'jvsl_' 서버손절로 판정한 scalpBotOn 을 함께 본다.
     for (const f of futures) {
       const sc = f.side === 'LONG' ? 'long' : 'short';
       const bot = coins.find(c => c.symbol === f.symbol);
+      const managed = !!bot || !!f.scalpBotOn;
       const pc = f.pnl >= 0 ? 'long' : 'short';
       const fmt$ = (n) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 4 });
+      // SL 은 거래소 실제 손절(serverStop) 우선, 없으면 봇 파일 값
+      const sl = f.serverStop ? f.serverStop.trigger : (bot ? bot.sl : null);
+      const tp = bot && bot.tp1 != null ? bot.tp1 : (f.serverTp ? f.serverTp.trigger : null);
+      let tail = '';
+      if (tp != null || sl != null) tail = ' · ' + [tp != null ? `TP $${fmt$(tp)}` : '', sl != null ? `SL $${fmt$(sl)}${f.serverStop ? '✅' : ''}` : ''].filter(Boolean).join('/');
+      if (f.serverStop === null) tail += ` · <span class="short" style="font-weight:700">⚠️ 서버손절 없음</span>`;
       rows.push(`<div style="display:flex;justify-content:space-between;gap:6px;padding:2px 0">` +
-        `<span>${bot ? '🤖' : '🟡'} ${f.symbol.replace('USDT','')} <span class="${sc}">${f.side}</span> ${f.lev}x</span>` +
+        `<span>${managed ? '🤖' : '🟡'} ${f.symbol.replace('USDT','')} <span class="${sc}">${f.side}</span> ${f.lev}x</span>` +
         `<span style="opacity:0.85">@$${fmt$(f.entry)} <span class="${pc}">${f.pnl >= 0 ? '+' : ''}$${f.pnl.toFixed(2)} (${f.pnlPct >= 0 ? '+' : ''}${f.pnlPct.toFixed(1)}%)</span>` +
-        (bot ? ` · TP $${fmt$(bot.tp1)}/SL $${fmt$(bot.sl)}` : '') + `</span></div>`);
+        tail + `</span></div>`);
     }
     for (const s of stocks) {
       const nm = KR_NAMES[s.code] || s.name || s.code;
+      const isKR = s.currency ? s.currency === 'KRW' : s.market === 'KR';
+      const pp = s.pnlPct != null ? ` <span class="${s.pnlPct >= 0 ? 'long' : 'short'}">${s.pnlPct >= 0 ? '+' : ''}${Number(s.pnlPct).toFixed(1)}%</span>` : '';
       rows.push(`<div style="display:flex;justify-content:space-between;gap:6px;padding:2px 0">` +
         `<span>${s.market === 'KR' ? '🇰🇷' : '🇺🇸'} ${nm}</span>` +
-        `<span style="opacity:0.75">${s.qty}주 @ ${s.market === 'KR' ? '₩' + Number(s.buyPrice).toLocaleString() : '$' + Number(s.buyPrice).toLocaleString()}</span></div>`);
+        `<span style="opacity:0.75">${s.qty}주 @ ${isKR ? '₩' + Number(s.buyPrice).toLocaleString() : '$' + Number(s.buyPrice).toLocaleString()}${pp}</span></div>`);
     }
-    listEl.innerHTML = (rows.join('') || '<span style="opacity:0.4">가동 중인 스캘핑 없음 — /scalp 명령 또는 주식봇 진입 시 표시</span>') +
+    const hasRows = futures.length + stocks.length > 0;
+    listEl.innerHTML = rows.join('') + (hasRows ? '' : (fUnknown || sUnknown
+        ? '<span style="opacity:0.6">일부 조회 실패 — 포지션 확인 불가</span>'
+        : '<span style="opacity:0.4">가동 중인 스캘핑 없음 — /scalp 명령 또는 주식봇 진입 시 표시</span>')) +
       `<div style="opacity:0.4;font-size:9px;margin-top:3px">갱신 ${new Date().toLocaleTimeString('ko-KR')}</div>`;
-    window.__scalpingOkAt = Date.now();   // 워치독용 성공 시각
+    // 워치독용 성공 시각 — 구간 실패가 있으면 '성공'으로 치지 않아 워치독이 계속 재시도하게 둔다
+    if (!r.futuresError && !r.stocksError) window.__scalpingOkAt = Date.now();
   } catch (e) {
     cntEl.textContent = '조회 실패';
-    listEl.innerHTML = `<span style="opacity:0.5">${e.message} · ${new Date().toLocaleTimeString('ko-KR')}</span>`;
+    listEl.innerHTML = `<span style="opacity:0.5">${escHtml(e.message)} · ${new Date().toLocaleTimeString('ko-KR')}</span>`;
   }
 }
 
@@ -1373,8 +1524,9 @@ refreshScalping();
 setInterval(refreshScalping, 30_000);  // 스캘핑 현황 30초
 // 탭이 다시 보이면 즉시 1회 갱신
 // 탭 복귀 시 전 섹션 즉시 갱신 — 모바일이 백그라운드 타이머를 죽여 옛 데이터가 화면에 굳는 문제 방지
+// (모든 주기 갱신 함수가 document.hidden 이면 바로 return 하므로, 복귀 시 여기서 전부 한 번씩 깨운다)
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) { refresh(); refreshLogs(); refreshScalping(); refreshToss(); refreshSpacex(); }
+  if (!document.hidden) { refresh(); refreshLogs(); refreshScalping(); refreshToss(); refreshSpacex(); refreshStocks(); refreshLearning(); refreshRealizedSince(); }
 });
 // 워치독: 스캘핑 갱신이 3분 넘게 성공 못 하면 강제 재시도 (인터벌이 조용히 죽는 케이스 방어)
 setInterval(() => {
@@ -1547,8 +1699,7 @@ function renderUpStaking(usdKrw) {
 }
 
 // 🚀 스페이스x — 나스닥 상장 SPCX(Space Exploration Technologies) 실시간 시세 × 보유 수량
-const SPACEX_KEY = 'JARVIS_SPACEX';
-const SPACEX_SYMBOL = 'SPCX';
+// (SPACEX_KEY·SPACEX_SYMBOL 은 스크립트 맨 위에 선언 — TDZ 방지)
 function getSpacex() {
   try {
     const raw = localStorage.getItem(SPACEX_KEY);
@@ -1571,7 +1722,7 @@ async function refreshSpacex() {
   const valEl = document.getElementById('spacexValue');
   const subEl = document.getElementById('spacexSub');
   const labelEl = document.getElementById('spacexLabel');
-  if (!valEl || !subEl) return;
+  if (!valEl || !subEl || document.hidden) return;   // 탭 비활성 시 폴링 중단
   const { qty } = getSpacex();
   // 라벨에 보유 수량 항상 노출 (입력 반영 확인용)
   if (labelEl) labelEl.innerHTML = `🚀 스페이스x 주당가격 · ${fmt.qty(qty)}주 <span style="opacity:0.5">✏️</span>`;
